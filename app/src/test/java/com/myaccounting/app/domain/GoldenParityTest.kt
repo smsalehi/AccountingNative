@@ -6,7 +6,7 @@ import org.junit.Test
 
 /**
  * Parity with the ORIGINAL TypeScript utilities. src/test/resources/gold_ts.txt was produced by running the original
- * src/utils/*.ts (bundled with esbuild, TZ=Asia/Tehran) through tools/golden/gold.ts. [goldenLines] runs the same
+ * src/utils TypeScript files (bundled with esbuild, TZ=Asia/Tehran) through tools/golden/gold.ts. [goldenLines] runs the same
  * scenarios through the Kotlin port. Regenerate with tools/golden/README.md.
  */
 class GoldenParityTest {
