@@ -40,8 +40,10 @@ object FW {
  * A text exactly like a CSS text with `font-size: sizeRem` and `line-height: lineRem` (both in rem):
  * fixed line box, glyphs centred in it (CSS half-leading), inherited `direction: rtl`.
  *
- * `includeFontPadding = false` is what makes the line box *exactly* `lineRem`, like a CSS line box;
- * with the platform default, Vazirmatn's padded ascent+descent exceed the line height.
+ * A CSS line box is always exactly `line-height` tall (the glyphs may overflow it). Compose never
+ * lays a line out shorter than the font's ascent+descent, so single-line text overrides the
+ * reported height with `exactLineBox`; see below. `includeFontPadding = false` additionally keeps
+ * the platform's extra font padding out of the centred glyph block.
  */
 @Composable
 fun TwText(

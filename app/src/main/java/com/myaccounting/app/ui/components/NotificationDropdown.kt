@@ -76,11 +76,13 @@ fun NotificationDropdown(
         properties = PopupProperties(focusable = true),
     ) {
         val state = remember { MutableTransitionState(false).apply { targetState = true } }
-        val pop = tween<Float>(180, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
+        val popEase = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)
+        val pop = tween<Float>(180, easing = popEase)
+        val slide = tween<androidx.compose.ui.unit.IntOffset>(180, easing = popEase)
         AnimatedVisibility(
             visibleState = state,
             enter = fadeIn(pop) + scaleIn(pop, initialScale = 0.98f) +
-                slideInVertically(tween(180, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))) { slidePx },
+                slideInVertically(slide) { slidePx },
         ) { Panel(items, unit, onDismissItem, onPayInstallment) }
     }
 }
@@ -110,7 +112,7 @@ private fun Panel(
             Column(
                 Modifier.fillMaxWidth().heightIn(max = rem(18f)) // max-h-72
                     .verticalScroll(rememberScrollState())
-                    .padding(right = rem(0.125f)), // pr-0.5
+                    .padding(start = rem(0.125f)), // pr-0.5 (physical right in RTL = start)
                 verticalArrangement = Arrangement.spacedBy(rem(0.5f)), // space-y-2
             ) {
                 items.forEach { item ->
