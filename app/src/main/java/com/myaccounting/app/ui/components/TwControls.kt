@@ -94,9 +94,7 @@ fun TwModal(
         val bw = cssBorder()
         val insets = LocalSafeInsets.current
         val density = LocalDensity.current
-        val screenHeightPx = view.resources.displayMetrics.heightPixels
-        val safeTopPx = with(density) { insets.top.roundToPx() }
-        val safeBottomPx = with(density) { insets.bottom.roundToPx() }
+        val screenHeight = with(density) { view.resources.displayMetrics.heightPixels.toDp() }
         // A dialog window is not the screen: the window manager lays it out inside the content area
         // (below the status bar) and it reports no insets at all. Measure where the window actually
         // starts, so the card can still be placed in the area between the system bars.
@@ -110,14 +108,14 @@ fun TwModal(
                     if (windowTopPx != location[1]) windowTopPx = location[1]
                 },
         ) {
-            windowTopPx?.let { windowTop ->
+            windowTopPx?.let { rawWindowTop ->
+                val windowTop = with(density) { rawWindowTop.toDp() }
                 BoxWithConstraints(Modifier.fillMaxSize()) {
-                    val heightPx = constraints.maxHeight
-                    val topPad = (safeTopPx - windowTop).coerceAtLeast(0)
-                    val bottomPad = (heightPx - screenHeightPx + safeBottomPx + windowTop).coerceAtLeast(0)
+                    val topPad = (insets.top - windowTop).coerceAtLeast(0.dp)
+                    val bottomPad = (maxHeight - screenHeight + insets.bottom + windowTop).coerceAtLeast(0.dp)
                     // `p-3` container with a `max-h-[92vh]` card: min(92 vh, height - 2 p-3).
                     val pad = rem(0.75f)
-                    val viewport = (heightPx - topPad - bottomPad).coerceAtLeast(1)
+                    val viewport = (maxHeight - topPad - bottomPad).coerceAtLeast(1.dp)
                     val cardHeight = min(viewport * maxHeightFraction, viewport - pad * 2)
                     val topGap = viewport * topFraction
                     Box(
