@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -177,6 +178,7 @@ fun TwTextField(
             color = dk(Tw.Slate800, Tw.Slate100),
             textDirection = if (ltr) TextDirection.Ltr else TextDirection.Rtl,
             textAlign = if (ltr) TextAlign.Left else TextAlign.Start,
+            platformStyle = PlatformTextStyle(includeFontPadding = false),
         ),
         singleLine = singleLine,
         cursorBrush = SolidColor(Tw.Sky500),

@@ -53,6 +53,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -352,7 +353,8 @@ private fun GroupTitleEditor(value: String, onChange: (String) -> Unit, onSave: 
             textStyle = TextStyle(
                 fontFamily = Vazirmatn, fontSize = remSp(0.875f), lineHeight = remSp(1.25f), fontWeight = FontWeight.Bold, color = textColor,
                 textDirection = TextDirection.Rtl,
-                lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
+                lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
+                platformStyle = PlatformTextStyle(includeFontPadding = false),
             ),
             cursorBrush = SolidColor(textColor),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),

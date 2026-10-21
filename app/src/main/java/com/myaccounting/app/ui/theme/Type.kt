@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -36,9 +37,8 @@ object FW {
  * A text exactly like a CSS text with `font-size: sizeRem` and `line-height: lineRem` (both in rem):
  * fixed line box, glyphs centred in it (CSS half-leading), inherited `direction: rtl`.
  *
- * Trim.Both is what makes the line box *exactly* `lineRem`, like a CSS line box. With Trim.None the
- * box grows to Vazirmatn's natural ascent+descent (+≈8 px at 0.75 rem, +≈10 px at 1.25 rem), which
- * made buttons and the title taller than the reference and pushed everything below them down.
+ * `includeFontPadding = false` is what makes the line box *exactly* `lineRem`, like a CSS line box;
+ * with the platform default, Vazirmatn's padded ascent+descent exceed the line height.
  */
 @Composable
 fun TwText(
@@ -70,7 +70,11 @@ fun TwText(
             letterSpacing = trackingEm.em,
             textAlign = align,
             textDirection = direction,
-            lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
+            // CSS line boxes do not include the font's top/bottom padding. Without this, Vazirmatn's
+            // padded ascent+descent make a 0.75 rem / 1 rem text 54 px instead of 46 px tall, which made
+            // the pill buttons 100 px against the reference 92 px and pushed the page down.
+            platformStyle = PlatformTextStyle(includeFontPadding = false),
+            lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
         ),
     )
 }
