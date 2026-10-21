@@ -2,8 +2,9 @@ name: Rasterize oversized bank logos
 
 # bank_melli / bank_tejarat / bank_sepah carry path data longer than aapt2 can store in a
 # string (> 32767 bytes): aapt2 replaces it with the literal "STRING_TOO_LARGE", which the
-# vector parser then rejects ("Unknown command for: R"). The web app renders the same SVGs,
-# so rasterise them with the same engine (Blink) at 288 px and ship the PNGs instead.
+# vector parser then rejects ("Unknown command for: R" — the R in STRING_TOO_LARGE).
+# The web app renders the same SVGs (copied to tools/logos), so rasterise them with the same
+# engine (Blink) at 288 px and ship the PNGs instead.
 on:
   workflow_dispatch:
 
@@ -12,9 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          repository: smsalehi/AccountingProject
-          path: web
 
       - name: Render the three logos
         run: |
@@ -23,7 +21,7 @@ jobs:
             python3 - "$name" <<'PY'
           import base64, pathlib, sys
           name = sys.argv[1]
-          svg = pathlib.Path(f"web/public/banks/{name}.svg").read_bytes()
+          svg = pathlib.Path(f"tools/logos/{name}.svg").read_bytes()
           uri = "data:image/svg+xml;base64," + base64.b64encode(svg).decode()
           # 288 px = 2.75x the largest on-screen box (xl 3.5rem at 105 % font scale).
           pathlib.Path(f"/tmp/{name}.html").write_text(
@@ -37,7 +35,6 @@ jobs:
               --screenshot="out/$(echo "$name" | tr 'A-Z' 'a-z').png" "/tmp/$name.html"
           done
           ls -l out
-          file out/*.png
 
       - uses: actions/upload-artifact@v4
         with:
