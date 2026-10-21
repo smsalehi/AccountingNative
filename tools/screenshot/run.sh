@@ -28,6 +28,11 @@ adb shell wm dismiss-keyguard || true
 adb install -r -t app/build/outputs/apk/debug/app-debug.apk
 python3 tools/screenshot/make_sample_db.py sample_db.json
 
+# Keep the whole logcat in the artifact: a crash after a tap only shows up there.
+adb logcat -c
+adb logcat -v threadtime > "$OUT/logcat.txt" 2>&1 &
+LOG_PID=$!
+
 # first launch creates the app's private directory; then seed the database and relaunch
 adb shell am start -n $PKG/.MainActivity; sleep 6
 adb shell am force-stop $PKG
@@ -70,10 +75,12 @@ relaunch() {
 }
 
 # Tap via uiautomator semantics; retry a few times, then use the reference coordinate.
+TAP_N=0
 tap_text() {
   local text="$1" fx="${2:-}" fy="${3:-}"
   for _ in 1 2 3 4; do
-    if python3 tools/screenshot/tap_text.py "$text"; then return 0; fi
+    TAP_N=$((TAP_N + 1))
+    if UI_DUMP="$OUT/ui_${TAP_N}.xml" python3 tools/screenshot/tap_text.py "$text"; then return 0; fi
     sleep 2
   done
   if [ -n "$fx" ] && [ -n "$fy" ]; then
@@ -91,7 +98,9 @@ shot account_settings
 
 # Inside it, open the bank picker (fallback: the «تغییر بانک» row).
 tap_text "تغییر بانک" 700 1650
-sleep 3
+sleep 1
+adb shell pidof "$PKG" >/dev/null 2>&1 || { echo "app died after the bank tap"; adb logcat -d -v threadtime > "$OUT/logcat_bank.txt" 2>/dev/null || true; }
+sleep 2
 shot bank_picker
 
 # Go back to a clean accounts screen instead of pressing back (which can reach the launcher).
@@ -115,4 +124,5 @@ shot accounts_collapsed
 adb shell cmd uimode night no
 sleep 4
 shot accounts_light
+kill "$LOG_PID" 2>/dev/null || true
 echo "screenshots written to $OUT"

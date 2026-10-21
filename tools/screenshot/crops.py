@@ -18,6 +18,7 @@ REGIONS = {
     "card_1": (60, 760, 1080, 1210),
     "card_2": (60, 1050, 1080, 1500),
     "nav": (0, 1690, 1080, 2210),
+    "modal_footer": (0, 1880, 1080, 2340),
 }
 
 os.makedirs(outdir, exist_ok=True)

@@ -38,3 +38,13 @@ jobs:
           for name in account_settings bank_picker account_new accounts_light; do
             [ -f "shots/$name.png" ] && python3 tools/screenshot/measure.py "shots/$name.png"
           done
+          mkdir -p shots/crops
+          if [ -f shots/account_settings.png ]; then
+            python3 tools/screenshot/crops.py shots/account_settings.png shots/account_settings.png shots/crops modal
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: inspect-crops
+          path: shots/crops/

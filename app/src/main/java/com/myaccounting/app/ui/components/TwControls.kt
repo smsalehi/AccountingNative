@@ -38,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
@@ -89,6 +90,14 @@ fun TwModal(
         val none = remember { MutableInteractionSource() }
         val shape = RoundedCornerShape(rem(1.5f))
         val bw = cssBorder()
+        // Diagnostic: do dialogs receive the system-bar insets? (the footer was landing under the nav bar)
+        val density = LocalDensity.current
+        android.util.Log.d(
+            "TwModal",
+            "insets top=${WindowInsets.safeDrawing.getTop(density)} bottom=${WindowInsets.safeDrawing.getBottom(density)} " +
+                "left=${WindowInsets.safeDrawing.getLeft(density, androidx.compose.ui.unit.LayoutDirection.Ltr)} " +
+                "right=${WindowInsets.safeDrawing.getRight(density, androidx.compose.ui.unit.LayoutDirection.Ltr)}",
+        )
         Box(
             Modifier.fillMaxSize().background(scrimColor)
                 .clickable(none, null, onClick = onDismiss),
