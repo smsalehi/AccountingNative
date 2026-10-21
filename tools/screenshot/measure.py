@@ -38,6 +38,16 @@ def amber(c):
     return r > 220 and 140 < g < 215 and b < 90
 
 
+def green(c):
+    r, g, b = c
+    return g > 110 and r < 90 and b < 130 and g > r + 60 and g > b + 30
+
+
+def sky(c):
+    r, g, b = c
+    return b > 150 and 90 < g < 190 and r < 90
+
+
 def best_shift(native, ref, y0=200, y1=1650, rng=90):
     a = native.convert("L")
     b = ref.convert("L").crop((0, y0, native.width, y1))
@@ -67,6 +77,8 @@ def report(path, ref_path=None):
                 print(f"   y {a:4d}-{b:4d}  rgb{c}")
     sun = bbox(im, amber, (0, 0, w, 500))
     print(" amber (sun) bbox:", sun)
+    print(" green (new button) bbox:", bbox(im, green, (0, 250, w, 700)))
+    print(" sky (transfer button) bbox:", bbox(im, sky, (0, 250, w, 700)))
     if ref_path:
         ref = Image.open(ref_path).convert("RGB")
         if ref.size != im.size:
@@ -74,6 +86,8 @@ def report(path, ref_path=None):
         print(" best dy (native - reference):", best_shift(im, ref), "(score is mean grey diff)")
         rsun = bbox(ref, amber, (0, 0, w, 500))
         print(" reference amber bbox:", rsun)
+        print(" reference green bbox:", bbox(ref, green, (0, 250, w, 700)))
+        print(" reference sky bbox:", bbox(ref, sky, (0, 250, w, 700)))
 
 
 def main():

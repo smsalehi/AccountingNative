@@ -31,3 +31,6 @@ jobs:
               python3 tools/screenshot/measure.py "shots/$1.png" "docs/reference/$1.png"
             fi
           done
+          echo "---- reference landmarks ----"
+          python3 tools/screenshot/measure.py docs/reference/accounts_collapsed.png
+          python3 tools/screenshot/measure.py docs/reference/accounts_expanded.png
