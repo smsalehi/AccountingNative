@@ -33,6 +33,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.myaccounting.app.R
@@ -109,7 +111,7 @@ fun AppHeader(
             // bell / settings / theme
             Row(horizontalArrangement = Arrangement.spacedBy(rem(0.375f)), verticalAlignment = Alignment.CenterVertically) {
                 // the badge is `absolute`: it must not take part in the button's layout, so it is a sibling of the padded icon
-                Box(Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onBell)) {
+                Box(Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onBell).semantics { contentDescription = "اعلان‌ها" }) {
                     Box(Modifier.padding(rem(0.5f) + bw)) { LucideIcon(R.drawable.ic_lucide_bell, 1f, dk(Tw.Slate600, Tw.Slate300)) }
                     if (urgentCount > 0) {
                         Box(
@@ -129,6 +131,7 @@ fun AppHeader(
 
                 Row(
                     Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onSettings)
+                        .semantics { contentDescription = "تنظیمات" }
                         .background(dk(Tw.Slate100, Tw.Slate800), chipShape)
                         .border(bw, dk(Tw.Slate200.a(0.8f), Tw.Slate700), chipShape)
                         .padding(horizontal = rem(0.75f) + bw, vertical = rem(0.375f) + bw),
@@ -137,6 +140,7 @@ fun AppHeader(
 
                 Box(
                     Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onToggleTheme)
+                        .semantics { contentDescription = "تغییر تم" }
                         .padding(rem(0.5f) + bw),
                 ) {
                     if (isDark) LucideIcon(R.drawable.ic_lucide_sun, 1f, Tw.Amber400)

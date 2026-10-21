@@ -115,6 +115,12 @@ relaunch
 # Expanded accounts screen (captured late so SystemUI, and with it the real top inset, is up).
 shot accounts_expanded
 
+# Bell popover (port of NotificationDropdown.tsx); the bell has the «اعلان‌ها» description.
+tap_text "اعلان‌ها"
+sleep 2
+shot notifications
+relaunch
+
 # Tap «بستن همه» (reference bbox y 449..541, centred at x≈540) and capture the collapsed state.
 tap_text "بستن همه" 540 495
 sleep 3

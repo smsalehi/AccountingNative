@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myaccounting.app.data.ThemeMode
 import com.myaccounting.app.ui.accounts.AccountsScreen
 import com.myaccounting.app.ui.components.AppToast
+import com.myaccounting.app.ui.components.NotificationDropdown
 import com.myaccounting.app.ui.theme.Tw
 import com.myaccounting.app.ui.theme.TwText
 import com.myaccounting.app.ui.theme.dk
@@ -38,6 +39,7 @@ fun AppRoot(vm: MainViewModel, isDark: Boolean, themeMode: ThemeMode) {
     val state by vm.state.collectAsStateWithLifecycle()
     val collapsed by vm.collapsedGroups.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(Tab.ACCOUNTS) }
+    var showNotifs by rememberSaveable { mutableStateOf(false) }
 
     // ToastModal.tsx: stays on screen for 3 s, then animates out (anim-pop).
     var toast by remember { mutableStateOf<ToastMessage?>(null) }
@@ -58,7 +60,7 @@ fun AppRoot(vm: MainViewModel, isDark: Boolean, themeMode: ThemeMode) {
             AppHeader(
                 isDark = isDark,
                 urgentCount = state.urgentNotifications,
-                onBell = { vm.notPorted("اعلان‌ها") },
+                onBell = { showNotifs = !showNotifs },
                 onSettings = { tab = Tab.SETTINGS },
                 onToggleTheme = { vm.toggleTheme(isDark) },
             )
@@ -87,6 +89,16 @@ fun AppRoot(vm: MainViewModel, isDark: Boolean, themeMode: ThemeMode) {
             exit = fadeOut(tween(160)) + scaleOut(tween(160), targetScale = 0.9f),
         ) {
             toast?.let { AppToast(it) }
+        }
+        // NotificationDropdown.tsx: `fixed top-20 left-1/2` — centred on the screen, so it lives here.
+        if (showNotifs) {
+            NotificationDropdown(
+                items = state.notifications,
+                unit = state.effectiveUnit,
+                onDismissItem = { vm.dismissNotification(it) },
+                onPayInstallment = { showNotifs = false; vm.notPorted("پرداخت قسط") },
+                onClose = { showNotifs = false },
+            )
         }
     }
 }

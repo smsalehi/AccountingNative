@@ -54,6 +54,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val effectiveUnit: CurrencyUnit = CurrencyUnit.TOMAN,
         /** Number on the bell badge. */
         val urgentNotifications: Int = 0,
+        /** Bell popover rows (port of the NotificationDropdown memo). */
+        val notifications: List<Notifications.Item> = emptyList(),
+        /** Reminder ids dismissed today. */
+        val notifDismissed: Set<String> = emptySet(),
         /** Red dot on the loans tab: overdue loans + checks needing attention. */
         val deptsAttention: Int = 0,
         /** Pending own checks per account (shown as «پس از چک‌ها»); empty in the dollar view. */
@@ -78,18 +82,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val fontScale: StateFlow<Int> = prefs.fontScale.stateIn(viewModelScope, SharingStarted.Eagerly, AppPrefs.DEFAULT_FONT_SCALE)
     val collapsedGroups: StateFlow<Set<String>> = prefs.collapsedGroups.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+    val notifDismissed: StateFlow<Set<String>> = prefs.notifDismissed.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
-    val state: StateFlow<UiState> = combine(dbFlow, unitFlow, toastFlow) { db, unit, toast ->
+    val state: StateFlow<UiState> = combine(dbFlow, unitFlow, toastFlow, notifDismissed) { db, unit, toast, dismissed ->
         if (db == null) {
-            UiState(loaded = false, unit = unit, effectiveUnit = unit, toast = toast)
+            UiState(loaded = false, unit = unit, effectiveUnit = unit, toast = toast, notifDismissed = dismissed)
         } else {
             val idx = ExchangeRates.buildRateIndex(db.exchangeRates)
             val effective = if (unit == CurrencyUnit.USD && idx == null) CurrencyUnit.TOMAN else unit
             val shown = if (effective == CurrencyUnit.USD && idx != null) ExchangeRates.buildUsdViewDb(db, idx) else db
+            val notifications = Notifications.items(shown, dismissed)
             UiState(
                 loaded = true, unit = unit, db = db, shownDb = shown,
                 balances = Balance.computeAccountBalances(shown), rateIndex = idx, toast = toast, effectiveUnit = effective,
-                urgentNotifications = Notifications.urgentCount(db),
+                urgentNotifications = notifications.size,
+                notifications = notifications,
+                notifDismissed = dismissed,
                 deptsAttention = LoanSchedule.countVisibleOverdueLoans(db) + Checks.countChecksNeedingAttention(db),
                 ownChecksByAccount = if (effective == CurrencyUnit.USD) emptyMap() else Checks.pendingOwnChecksByAccount(db),
             )
@@ -136,6 +144,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setFontScale(percent: Int) { viewModelScope.launch { prefs.setFontScale(percent) } }
 
     fun setCollapsedGroups(uids: Set<String>) { viewModelScope.launch { prefs.setCollapsedGroups(uids) } }
+
+    /** `dismissNotif` in NotificationDropdown.tsx: hide today, restore tomorrow. */
+    fun dismissNotification(id: String) {
+        viewModelScope.launch { prefs.setNotifDismissed(notifDismissed.value + id) }
+    }
 
     /** Screens/dialogs that are not ported yet say so instead of silently doing nothing. */
     fun notPorted(what: String) { emit("$what — این بخش هنوز در نسخه نیتیو منتقل نشده است.", ToastKind.WARNING) }
