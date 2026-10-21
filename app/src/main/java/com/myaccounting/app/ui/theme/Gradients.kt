@@ -51,8 +51,8 @@ fun oklabAt(colors: List<Color>, t: Float): Color {
 }
 
 /** `bg-gradient-to-tr` — from the bottom-left corner to the top-right corner (45° for a square), OKLab interpolated. */
-fun toTopRightBrush(size: Size, vararg colors: Color, steps: Int = 32): Brush {
-    val list = colors.toList()
+fun toTopRightBrush(size: Size, colors: List<Color>, steps: Int = 32): Brush {
+    val list = colors
     val stops = Array(steps + 1) { i -> (i / steps.toFloat()) to oklabAt(list, i / steps.toFloat()) }
     return Brush.linearGradient(colorStops = stops, start = Offset(0f, size.height), end = Offset(size.width, 0f))
 }

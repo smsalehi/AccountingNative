@@ -78,10 +78,14 @@ fun AppHeader(
         ) {
             // logo + date chip
             Row(horizontalArrangement = Arrangement.spacedBy(rem(0.75f)), verticalAlignment = Alignment.CenterVertically) {
+                val logoCorner = rem(1f)
                 Box(
-                    Modifier.size(rem(2.5f)).cssShadow(TwShadow.md(Tw.Sky500.a(0.25f)), rem(1f))
+                    Modifier.size(rem(2.5f)).cssShadow(TwShadow.md(Tw.Sky500.a(0.25f)), logoCorner)
                         .drawBehind {
-                            drawRoundRect(toTopRightBrush(size, Tw.Sky600, Tw.Indigo600, Tw.Teal500), cornerRadius = CornerRadius(rem(1f).toPx()))
+                            drawRoundRect(
+                                toTopRightBrush(size, listOf(Tw.Sky600, Tw.Indigo600, Tw.Teal500)),
+                                cornerRadius = CornerRadius(logoCorner.toPx()),
+                            )
                         }
                         .padding(rem(0.375f)),
                 ) { Image(painterResource(R.drawable.logo_app), null, Modifier.fillMaxSize()) }
@@ -188,7 +192,7 @@ fun BottomNav(
                 Modifier.offset(y = -rem(0.25f)).size(rem(2.75f))
                     .cssShadow(TwShadow.lg(Tw.Sky500.a(0.3f)), rem(1.375f))
                     .drawBehind {
-                        drawRoundRect(toTopRightBrush(size, Tw.Sky600, Tw.Indigo600), cornerRadius = CornerRadius(size.minDimension / 2f))
+                        drawRoundRect(toTopRightBrush(size, listOf(Tw.Sky600, Tw.Indigo600)), cornerRadius = CornerRadius(size.minDimension / 2f))
                     }
                     .clickable(none, null, onClick = onFab),
                 contentAlignment = Alignment.Center,

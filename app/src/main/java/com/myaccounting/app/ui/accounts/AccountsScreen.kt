@@ -364,6 +364,7 @@ private fun AccountCard(
 ) {
     val bw = cssBorder()
     val shape = RoundedCornerShape(rem(1f))
+    val cornerPx = rem(1f)
     val dragging = dnd.draggingUid == acc.uid
     val hidden = acc.isHidden != 0
     val scale by animateFloatAsState(if (dragging) 0.95f else 1f, tween(150), label = "a-scale")
@@ -389,7 +390,7 @@ private fun AccountCard(
                     val w = bw.toPx()
                     drawRoundRect(
                         borderColor, topLeft = Offset(w / 2, w / 2), size = Size(size.width - w, size.height - w),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(rem(1f).toPx() - w / 2),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerPx.toPx() - w / 2),
                         style = Stroke(w, pathEffect = PathEffect.dashPathEffect(floatArrayOf(w * 3, w * 3))),
                     )
                 } else Modifier.border(bw, borderColor, shape),
