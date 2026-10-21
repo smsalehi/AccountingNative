@@ -26,8 +26,36 @@ sleep 8
 
 adb exec-out screencap -p > "$OUT/accounts_expanded.png"
 
+# Coordinates from the reference screenshot (1080x2340) are the fallback when semantics are missing.
+tap_text() { python3 tools/screenshot/tap_text.py "$1" "$2" "$3" || true; }
+
+# settings modal of the first account (tap the gear on the card)
+tap_text "تنظیمات حساب" 173 778
+sleep 2
+adb exec-out screencap -p > "$OUT/account_settings.png"
+
+# inside it, open the bank picker
+tap_text "تغییر بانک"
+sleep 2
+adb exec-out screencap -p > "$OUT/bank_picker.png"
+
+# close the picker and the settings modal
+adb shell input keyevent 4; sleep 1
+adb shell input keyevent 4; sleep 1
+
+# new-account modal («جدید» in the header)
+tap_text "جدید" 774 413
+sleep 2
+adb exec-out screencap -p > "$OUT/account_new.png"
+adb shell input keyevent 4; sleep 1
+
 # tap «بستن همه» (x≈440, y≈495 on a 1080x2340 screen) and capture the collapsed state
-adb shell input tap 440 495
+tap_text "بستن همه" 440 495
 sleep 2
 adb exec-out screencap -p > "$OUT/accounts_collapsed.png"
+
+# the same screen in light mode
+adb shell cmd uimode night no
+sleep 3
+adb exec-out screencap -p > "$OUT/accounts_light.png"
 echo "screenshots written to $OUT"
