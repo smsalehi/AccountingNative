@@ -11,24 +11,37 @@ adb shell cmd uimode night yes            # dark theme (theme default = follow s
 adb shell settings put global window_animation_scale 0
 adb shell settings put global transition_animation_scale 0
 adb shell settings put global animator_duration_scale 0
+# A first boot on swiftshader is slow; never let a System UI ANR dialog cover the app.
+adb shell settings put global hide_error_dialogs 1
+adb shell settings put global anr_show_background 0
+adb shell settings put secure anr_show_background 0
 adb shell cmd overlay enable com.android.internal.systemui.navbar.threebutton || true
 
 adb install -r -t app/build/outputs/apk/debug/app-debug.apk
 python3 tools/screenshot/make_sample_db.py sample_db.json
 
 # first launch creates the app's private directory; then seed the database and relaunch
-adb shell am start -n $PKG/.MainActivity; sleep 5
+adb shell am start -n $PKG/.MainActivity; sleep 6
 adb shell am force-stop $PKG
 adb push sample_db.json /data/local/tmp/sample_db.json
 adb shell run-as $PKG mkdir -p files
 adb shell run-as $PKG cp /data/local/tmp/sample_db.json files/smart_accounting_db_v1.json
 adb shell am start -n $PKG/.MainActivity
-sleep 8
+sleep 18
+
+# Wait until our activity owns the focused window (dismiss a lingering dialog with "Wait").
+for _ in $(seq 1 15); do
+  focus=$(adb shell dumpsys window 2>/dev/null | grep -m1 mCurrentFocus || true)
+  case "$focus" in
+    *$PKG*) echo "focused: $focus"; break ;;
+    *) echo "waiting for focus: $focus"; python3 tools/screenshot/tap_text.py "Wait" >/dev/null 2>&1 || true; sleep 3 ;;
+  esac
+done
 
 adb exec-out screencap -p > "$OUT/accounts_expanded.png"
 
 # Coordinates from the reference screenshot (1080x2340) are the fallback when semantics are missing.
-tap_text() { python3 tools/screenshot/tap_text.py "$1" "$2" "$3" || true; }
+tap_text() { python3 tools/screenshot/tap_text.py "$1" "${2:-}" "${3:-}" || true; }
 
 # settings modal of the first account (tap the gear on the card)
 tap_text "تنظیمات حساب" 173 778
