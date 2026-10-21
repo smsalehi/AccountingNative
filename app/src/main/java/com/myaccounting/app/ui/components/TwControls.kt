@@ -36,6 +36,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.PlatformTextStyle
@@ -85,45 +87,56 @@ fun TwModal(
             // No platform dim: the scrim below is the web's exact colour/alpha.
             val window = (view.parent as? DialogWindowProvider)?.window
             window?.setDimAmount(0f)
-            // A MATCH_PARENT dialog window is as tall as the display, but the window manager lays it
-            // out inside the content area: it ends up shifted down by the status-bar height and
-            // reports every inset as zero. Pin it to the display origin and let it ignore the system
-            // bars; the card is padded with the activity's insets (LocalSafeInsets) instead, since
-            // this window cannot see them.
-            window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-            window?.setGravity(android.view.Gravity.TOP or android.view.Gravity.START)
             onDispose { }
         }
         val none = remember { MutableInteractionSource() }
         val shape = RoundedCornerShape(rem(1.5f))
         val bw = cssBorder()
         val insets = LocalSafeInsets.current
+        val density = LocalDensity.current
+        val screenHeightPx = view.resources.displayMetrics.heightPixels
+        val safeTopPx = with(density) { insets.top.roundToPx() }
+        val safeBottomPx = with(density) { insets.bottom.roundToPx() }
+        // A dialog window is not the screen: the window manager lays it out inside the content area
+        // (below the status bar) and it reports no insets at all. Measure where the window actually
+        // starts, so the card can still be placed in the area between the system bars.
+        var windowTopPx by remember { mutableStateOf<Int?>(null) }
         Box(
             Modifier.fillMaxSize().background(scrimColor)
-                .clickable(none, null, onClick = onDismiss),
+                .clickable(none, null, onClick = onDismiss)
+                .onGloballyPositioned {
+                    val location = IntArray(2)
+                    view.getLocationOnScreen(location)
+                    if (windowTopPx != location[1]) windowTopPx = location[1]
+                },
         ) {
-            // The web's `fixed inset-0` is the viewport, i.e. the area between the system bars;
-            // the dialog window below does not know where those bars are (it reports no insets).
-            BoxWithConstraints(
-                Modifier.fillMaxSize()
-                    .padding(start = insets.start, end = insets.end, top = insets.top, bottom = insets.bottom),
-            ) {
-                // `p-3` container with a `max-h-[92vh]` card: min(92 vh, height - 2 p-3).
-                val pad = rem(0.75f)
-                val cardHeight = min(maxHeight * maxHeightFraction, maxHeight - pad * 2)
-                val topPad = maxHeight * topFraction
-                Box(Modifier.fillMaxSize().padding(pad).padding(top = topPad), contentAlignment = Alignment.Center) {
-                    Column(
-                        Modifier.widthIn(max = rem(maxWidthRem)).fillMaxWidth()
-                            .then(if (fillHeight) Modifier.height(cardHeight) else Modifier)
-                            .cssShadow(TwShadow.xxl(), rem(1.5f))
-                            .clip(shape)
-                            .background(dk(Tw.White, Tw.Slate900))
-                            .border(bw, dk(Tw.Slate200, Tw.Slate800), shape)
-                            .clickable(remember { MutableInteractionSource() }, null) { }
-                            .imePadding(),
-                        content = content,
-                    )
+            windowTopPx?.let { windowTop ->
+                BoxWithConstraints(Modifier.fillMaxSize()) {
+                    val heightPx = constraints.maxHeight
+                    val topPad = (safeTopPx - windowTop).coerceAtLeast(0)
+                    val bottomPad = (heightPx - screenHeightPx + safeBottomPx + windowTop).coerceAtLeast(0)
+                    // `p-3` container with a `max-h-[92vh]` card: min(92 vh, height - 2 p-3).
+                    val pad = rem(0.75f)
+                    val viewport = (heightPx - topPad - bottomPad).coerceAtLeast(1)
+                    val cardHeight = min(viewport * maxHeightFraction, viewport - pad * 2)
+                    val topGap = viewport * topFraction
+                    Box(
+                        Modifier.fillMaxSize().padding(start = insets.start, end = insets.end, top = topPad, bottom = bottomPad)
+                            .padding(pad).padding(top = topGap),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(
+                            Modifier.widthIn(max = rem(maxWidthRem)).fillMaxWidth()
+                                .then(if (fillHeight) Modifier.height(cardHeight) else Modifier)
+                                .cssShadow(TwShadow.xxl(), rem(1.5f))
+                                .clip(shape)
+                                .background(dk(Tw.White, Tw.Slate900))
+                                .border(bw, dk(Tw.Slate200, Tw.Slate800), shape)
+                                .clickable(remember { MutableInteractionSource() }, null) { }
+                                .imePadding(),
+                            content = content,
+                        )
+                    }
                 }
             }
         }
