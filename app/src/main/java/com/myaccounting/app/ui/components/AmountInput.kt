@@ -55,7 +55,7 @@ fun AmountInput(
     value: Double,
     onChange: (Double) -> Unit,
     unit: CurrencyUnit,
-    label: String,
+    label: String? = null,
     placeholder: String = "۰",
     allowZero: Boolean = false,
     helperText: String? = null,
@@ -67,7 +67,7 @@ fun AmountInput(
     val shape = RoundedCornerShape(rem(0.75f))
 
     Column(modifier) {
-        TwLabel(label)
+        if (label != null) TwLabel(label)
         Box(
             Modifier.fillMaxWidth().heightIn(min = rem(2.5f))
                 .background(dk(Tw.White, Tw.Slate900), shape)

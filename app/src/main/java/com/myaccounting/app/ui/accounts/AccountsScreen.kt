@@ -102,7 +102,12 @@ private class Dnd {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AccountsScreen(state: MainViewModel.UiState, collapsed: Set<String>, vm: MainViewModel) {
+fun AccountsScreen(
+    state: MainViewModel.UiState,
+    collapsed: Set<String>,
+    vm: MainViewModel,
+    onOpenNewTransaction: (type: Int, accountUid: String?) -> Unit = { _, _ -> },
+) {
     if (!state.loaded) return
     val db = state.shownDb
     val unit = state.effectiveUnit
@@ -143,7 +148,7 @@ fun AccountsScreen(state: MainViewModel.UiState, collapsed: Set<String>, vm: Mai
                 PillButton(
                     bg = Tw.Sky600, fg = Tw.White, icon = R.drawable.ic_lucide_arrow_left_right, iconRem = 0.875f, iconTint = Tw.White,
                     text = "انتقال", hPadRem = 0.75f, shadow = true,
-                ) { vm.notPorted("ثبت انتقال وجه") }
+                ) { onOpenNewTransaction(3, null) }
                 PillButton(
                     bg = dk(Tw.Slate100, Tw.Slate800), fg = dk(Tw.Slate700, Tw.Slate200), icon = R.drawable.ic_lucide_chevrons_up_down,
                     iconRem = 0.875f, iconTint = Tw.Slate500, text = if (areAllCollapsed) "باز کردن همه" else "بستن همه", hPadRem = 0.75f, shadow = false,
@@ -174,7 +179,7 @@ fun AccountsScreen(state: MainViewModel.UiState, collapsed: Set<String>, vm: Mai
                     dnd = dnd, onDrop = ::dropped,
                     bankTitles = bankTitles, balances = state.balances, ownChecks = state.ownChecksByAccount,
                     onSelectAccount = { vm.notPorted("نمایش تراکنش‌های حساب") },
-                    onNewTransaction = { vm.notPorted("ثبت تراکنش") },
+                    onNewTransaction = { uid -> onOpenNewTransaction(1, uid) },
                     onAccountSettings = { uid -> if (unit == CurrencyUnit.USD) vm.warn(Currency.USD_READONLY_MESSAGE) else settingsAccount = db.accounts.firstOrNull { it.uid == uid } },
                 )
             }
@@ -192,7 +197,7 @@ fun AccountsScreen(state: MainViewModel.UiState, collapsed: Set<String>, vm: Mai
             onSave = { vm.saveAccount(it); settingsAccount = null },
             onDelete = { vm.deleteAccount(it) },
             onViewTransactions = { vm.notPorted("نمایش تراکنش‌های حساب") },
-            onQuickTransaction = { vm.notPorted("ثبت تراکنش") },
+            onQuickTransaction = { type -> onOpenNewTransaction(type, acc.uid); settingsAccount = null },
         )
     }
 }

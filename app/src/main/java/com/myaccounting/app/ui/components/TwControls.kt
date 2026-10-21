@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.absolutePadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -173,12 +174,14 @@ fun TwTextField(
     startPadRem: Float = 0.875f,
     endPadRem: Float = 0.875f,
     keyboardType: KeyboardType = KeyboardType.Text,
+    bg: Color = dk(Tw.White, Tw.Slate900),
+    borderColor: Color = dk(Tw.Slate200, Tw.Slate700),
 ) {
     var focused by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(rem(0.75f))
     val bw = cssBorder()
     val borderW = if (focused) bw * 2f else bw
-    val borderColor = if (focused) Tw.Sky500 else dk(Tw.Slate200, Tw.Slate700)
+    val finalBorder = if (focused) Tw.Sky500 else borderColor
     val focusManager = LocalFocusManager.current
     BasicTextField(
         value = value,
@@ -186,8 +189,8 @@ fun TwTextField(
         modifier = modifier.fillMaxWidth()
             .heightIn(min = if (minHeightRem > 0f) rem(minHeightRem) else 0.dp)
             .onFocusChanged { focused = it.isFocused }
-            .background(dk(Tw.White, Tw.Slate900), shape)
-            .border(borderW, borderColor, shape)
+            .background(bg, shape)
+            .border(borderW, finalBorder, shape)
             .padding(start = rem(startPadRem), end = rem(endPadRem), top = rem(vPadRem), bottom = rem(vPadRem)),
         textStyle = TextStyle(
             fontFamily = if (mono) FontFamily.Monospace else Vazirmatn,
@@ -265,6 +268,23 @@ fun TwIconButton(icon: Int, onClick: () -> Unit, tint: Color, modifier: Modifier
         modifier.clip(RoundedCornerShape(rem(0.75f))).clickable(remember { MutableInteractionSource() }, null, onClick = onClick)
             .padding(rem(padRem)),
     ) { LucideIcon(icon, iconRem, tint) }
+}
+
+/**
+ * The `relative` search box of the pickers: `pl-3 pr-9 py-2` input with a `w-4 h-4` magnifier at
+ * `right-3 top-2.5` and the slate-50/slate-800 fill.
+ */
+@Composable
+fun TwSearchField(value: String, onValueChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxWidth()) {
+        TwTextField(
+            value = value, onValueChange = onValueChange, placeholder = placeholder,
+            vPadRem = 0.5f, startPadRem = 0.75f, endPadRem = 2.25f, bg = dk(Tw.Slate50, Tw.Slate800),
+        )
+        Box(Modifier.align(Alignment.TopEnd).absolutePadding(right = rem(0.75f), top = rem(0.625f))) {
+            LucideIcon(com.myaccounting.app.R.drawable.ic_lucide_search, 1f, Tw.Slate400)
+        }
+    }
 }
 /** The little round check bubble used by the bank picker grid. */
 @Composable
