@@ -1,0 +1,43 @@
+package com.myaccounting.app.ui.components
+
+import com.myaccounting.app.R
+
+/** Logo file name (as in the original public/banks) → VectorDrawable converted from the same SVG. */
+val BankLogoDrawables: Map<String, Int> = mapOf(
+    "Ansar.svg" to R.drawable.bank_ansar,
+    "Ayandeh.svg" to R.drawable.bank_ayandeh,
+    "Bank_Markazi.svg" to R.drawable.bank_bank_markazi,
+    "Caspian.svg" to R.drawable.bank_caspian,
+    "Dey.svg" to R.drawable.bank_dey,
+    "Eghtesad_Novin.svg" to R.drawable.bank_eghtesad_novin,
+    "Gardeshgari.svg" to R.drawable.bank_gardeshgari,
+    "Ghavamin.svg" to R.drawable.bank_ghavamin,
+    "Hekmat.svg" to R.drawable.bank_hekmat,
+    "Iran_Zamin.svg" to R.drawable.bank_iran_zamin,
+    "Karafarin.svg" to R.drawable.bank_karafarin,
+    "Keshavarzi.svg" to R.drawable.bank_keshavarzi,
+    "Khavar_Mianeh.svg" to R.drawable.bank_khavar_mianeh,
+    "Kosar.svg" to R.drawable.bank_kosar,
+    "Maskan.svg" to R.drawable.bank_maskan,
+    "Mehr_Eghtesad.svg" to R.drawable.bank_mehr_eghtesad,
+    "Mehr_Iran.svg" to R.drawable.bank_mehr_iran,
+    "Melall.svg" to R.drawable.bank_melall,
+    "Mellat.svg" to R.drawable.bank_mellat,
+    "Melli.svg" to R.drawable.bank_melli,
+    "Noor.svg" to R.drawable.bank_noor,
+    "Parsian.svg" to R.drawable.bank_parsian,
+    "Pasargad.svg" to R.drawable.bank_pasargad,
+    "Postbank.svg" to R.drawable.bank_postbank,
+    "Refah.svg" to R.drawable.bank_refah,
+    "Resalat.svg" to R.drawable.bank_resalat,
+    "Saderat.svg" to R.drawable.bank_saderat,
+    "Saman.svg" to R.drawable.bank_saman,
+    "Sanat_Madan.svg" to R.drawable.bank_sanat_madan,
+    "Sarmayeh.svg" to R.drawable.bank_sarmayeh,
+    "Sepah.svg" to R.drawable.bank_sepah,
+    "Shahr.svg" to R.drawable.bank_shahr,
+    "Sina.svg" to R.drawable.bank_sina,
+    "Tejarat.svg" to R.drawable.bank_tejarat,
+    "Tosee_Saderat.svg" to R.drawable.bank_tosee_saderat,
+    "Tosee_Taavon.svg" to R.drawable.bank_tosee_taavon,
+)

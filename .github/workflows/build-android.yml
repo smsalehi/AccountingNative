@@ -1,0 +1,106 @@
+name: Build Android APK (native, arm64, Android 16+)
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      # The Gradle wrapper jar is not committed; install the exact Gradle version the project uses.
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.14.3
+
+      - name: Install Android SDK platform 36 (Android 16)
+        run: |
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ -x "$SDKMANAGER" ]; then
+            yes | "$SDKMANAGER" --licenses > /dev/null || true
+            "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" || true
+          fi
+
+      # Domain logic is checked against values produced by the ORIGINAL TypeScript code (GoldenParityTest).
+      - name: Unit tests (parity with original app logic)
+        run: gradle --no-daemon testDebugUnitTest
+
+      - name: Check signing secrets
+        env:
+          KEYSTORE_KEY: ${{ secrets.ANDROID_KEYSTORE_KEY }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_KEY" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "::error::Signing secrets missing. Add ANDROID_KEYSTORE_KEY / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD under repo Settings > Secrets > Actions."
+            exit 1
+          fi
+
+      - name: Build release APK (unsigned, arm64-v8a, minSdk 36)
+        run: gradle --no-daemon assembleRelease
+
+      - name: Sign APK with stable key
+        env:
+          KEYSTORE_KEY: ${{ secrets.ANDROID_KEYSTORE_KEY }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          # The encrypted keystore ships in the repo; only this short key comes
+          # from secrets. Same python library encrypts and decrypts, so there
+          # is no format-compatibility risk.
+          pip install -q cryptography
+          if ! python3 -c "import os; from cryptography.fernet import Fernet; open('release.keystore','wb').write(Fernet(os.environ['KEYSTORE_KEY'].strip().encode()).decrypt(open('.github/keystore/android-keystore.enc','rb').read()))"; then
+            echo "::error::Could not decrypt the keystore. Check the ANDROID_KEYSTORE_KEY secret value."
+            exit 1
+          fi
+          SIZE="$(wc -c < release.keystore)"
+          echo "keystore bytes: $SIZE (expected 2680)"
+          if [ "$SIZE" -ne 2680 ]; then
+            echo "::error::Decoded keystore has wrong size ($SIZE bytes, want 2680)."
+            exit 1
+          fi
+          BUILD_TOOLS="$ANDROID_SDK_ROOT/build-tools/$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -1)"
+          "$BUILD_TOOLS/zipalign" -p -f 4 app/build/outputs/apk/release/app-release-unsigned.apk myaccounting-aligned.apk
+          "$BUILD_TOOLS/apksigner" sign --ks release.keystore --ks-type PKCS12 --ks-pass env:KEYSTORE_PASSWORD --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASSWORD --out myaccounting-native-arm64.apk myaccounting-aligned.apk
+          "$BUILD_TOOLS/apksigner" verify --print-certs myaccounting-native-arm64.apk
+          rm -f release.keystore myaccounting-aligned.apk
+
+      - name: Verify APK is arm64-only and Android 16+
+        run: |
+          BUILD_TOOLS="$ANDROID_SDK_ROOT/build-tools/$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -1)"
+          "$BUILD_TOOLS/aapt2" dump badging myaccounting-native-arm64.apk | grep -E "^(package|sdkVersion|targetSdkVersion|native-code)" || true
+          BADGING="$("$BUILD_TOOLS/aapt2" dump badging myaccounting-native-arm64.apk)"
+          echo "$BADGING" | grep -q "^sdkVersion:'36'" || { echo "::error::minSdk is not 36 (Android 16)"; exit 1; }
+          NATIVE="$(echo "$BADGING" | grep "^native-code:" || true)"
+          if [ -n "$NATIVE" ] && [ "$NATIVE" != "native-code: 'arm64-v8a'" ]; then
+            echo "::error::APK contains ABIs other than arm64-v8a: $NATIVE"
+            exit 1
+          fi
+          unzip -l myaccounting-native-arm64.apk | grep "lib/" | grep -v "lib/arm64-v8a/" && { echo "::error::non-arm64 libraries found"; exit 1; } || true
+
+      - name: Publish APK to rolling Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest Android build (native)
+          body: |
+            آخرین بیلد نسخه‌ی نیتیو (Kotlin / Jetpack Compose) برنامه حسابداری — فقط arm64-v8a و اندروید ۱۶ به بالا.
+            با کلید ثابت امضا شده، پس نسخه‌های بعدی بدون حذف نصب قبلی آپدیت می‌شوند.
+            فایل `myaccounting-native-arm64.apk` را مستقیم دانلود و نصب کنید — بدون زیپ.
+            Commit: ${{ github.sha }}
+          files: myaccounting-native-arm64.apk
+          make_latest: "true"
