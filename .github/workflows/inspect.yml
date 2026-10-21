@@ -35,10 +35,16 @@ jobs:
           python3 tools/screenshot/measure.py docs/reference/accounts_collapsed.png
           python3 tools/screenshot/measure.py docs/reference/accounts_expanded.png
           echo "---- modal landmarks ----"
-          for name in account_settings bank_picker account_new accounts_light; do
+          for name in account_settings bank_picker account_new accounts_light notifications; do
             [ -f "shots/$name.png" ] && python3 tools/screenshot/measure.py "shots/$name.png"
           done
           mkdir -p shots/crops
+          echo "---- TwModal insets ----"
+          grep -h "TwModal" shots/logcat*.txt | tail -5 || true
+          echo "---- bank logos ----"
+          grep -h "BankLogo" shots/logcat*.txt | tail -45 || true
+          echo "---- crashes ----"
+          grep -h "FATAL EXCEPTION" -A 12 shots/logcat*.txt | tail -30 || true
           if [ -f shots/account_settings.png ]; then
             python3 tools/screenshot/crops.py shots/account_settings.png shots/account_settings.png shots/crops modal
           fi
