@@ -36,14 +36,14 @@ import com.myaccounting.app.ui.components.LucideIcon
 import com.myaccounting.app.ui.components.TwCheckBubble
 import com.myaccounting.app.ui.components.TwIconButton
 import com.myaccounting.app.ui.components.TwModal
+import com.myaccounting.app.ui.components.TwShadow
+import com.myaccounting.app.ui.components.cssShadow
 import com.myaccounting.app.ui.components.TwTextField
 import com.myaccounting.app.ui.theme.FW
 import com.myaccounting.app.ui.theme.Tw
-import com.myaccounting.app.ui.theme.TwShadow
 import com.myaccounting.app.ui.theme.TwText
 import com.myaccounting.app.ui.theme.a
 import com.myaccounting.app.ui.theme.cssBorder
-import com.myaccounting.app.ui.theme.cssShadow
 import com.myaccounting.app.ui.theme.dk
 import com.myaccounting.app.ui.theme.rem
 
@@ -212,7 +212,7 @@ fun BankPickerDialog(
                 Modifier
                     .background(dk(Tw.White, Tw.Slate800), RoundedCornerShape(rem(0.75f)))
                     .border(cssBorder(), dk(Tw.Slate200, Tw.Slate700), RoundedCornerShape(rem(0.75f)))
-                    .clickable(remember { MutableInteractionSource() }, null, onDismiss)
+                    .clickable(remember { MutableInteractionSource() }, null, onClick = onDismiss)
                     .padding(horizontal = rem(1f), vertical = rem(0.375f)),
             ) {
                 TwText("بستن", 0.75f, 1f, dk(Tw.Slate700, Tw.Slate200), weight = FW.Medium)

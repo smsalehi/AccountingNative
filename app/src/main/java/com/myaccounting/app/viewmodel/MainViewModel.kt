@@ -16,6 +16,7 @@ import com.myaccounting.app.domain.LoanSchedule
 import com.myaccounting.app.domain.Notifications
 import com.myaccounting.app.domain.Reorder
 import com.myaccounting.app.domain.BackupCodec
+import com.myaccounting.app.domain.Currency
 import com.myaccounting.app.domain.CurrencyUnit
 import com.myaccounting.app.domain.DatabaseCodec
 import com.myaccounting.app.domain.ExchangeRates
