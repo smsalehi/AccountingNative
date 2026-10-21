@@ -20,6 +20,10 @@ adb shell settings put global hide_error_dialogs 1
 adb shell settings put global anr_show_background 0
 adb shell settings put secure anr_show_background 0
 adb shell cmd overlay enable com.android.internal.systemui.navbar.threebutton || true
+# SystemUI needs a while after boot; until the status bar exists the app's top inset is 0
+# and the header sits ~40 px too high (the first capture used to be taken too early).
+sleep 45
+adb shell wm dismiss-keyguard || true
 
 adb install -r -t app/build/outputs/apk/debug/app-debug.apk
 python3 tools/screenshot/make_sample_db.py sample_db.json
@@ -41,6 +45,8 @@ for _ in $(seq 1 10); do
     *) echo "waiting for focus: $focus"; python3 tools/screenshot/tap_text.py "Wait" >/dev/null 2>&1 || true; sleep 3 ;;
   esac
 done
+sleep 8
+adb shell dumpsys window displays 2>/dev/null | grep -i -m3 -E "statusBar|cutout" || true
 
 shot() {
   adb shell wm dismiss-keyguard >/dev/null 2>&1 || true
@@ -57,35 +63,36 @@ relaunch() {
 # Coordinates from the reference screenshot (1080x2340) are the fallback when semantics are missing.
 tap_text() { python3 tools/screenshot/tap_text.py "$1" "${2:-}" "${3:-}" || true; }
 
-shot accounts_expanded
-
-# settings modal of the first account (tap the gear on the card)
+# Settings modal of the first account (tap the gear on the card).
 tap_text "تنظیمات حساب" 173 778
 sleep 2
 adb logcat -d -v brief AndroidRuntime:E '*:S' > "$OUT/crash.txt" 2>/dev/null || true
 shot account_settings
 
-# inside it, open the bank picker
+# Inside it, open the bank picker.
 tap_text "تغییر بانک"
 sleep 2
 shot bank_picker
 
-# go back to a clean accounts screen instead of pressing back (which can reach the launcher)
+# Go back to a clean accounts screen instead of pressing back (which can reach the launcher).
 relaunch
 
-# new-account modal («جدید» in the header)
+# New-account modal («جدید» in the header).
 tap_text "جدید" 774 413
 sleep 2
 shot account_new
 relaunch
 
-# tap «بستن همه» (x≈440, y≈495 on a 1080x2340 screen) and capture the collapsed state
+# Expanded accounts screen. Captured late so SystemUI (status bar + its inset) is definitely up.
+shot accounts_expanded
+
+# Tap «بستن همه» (x≈440, y≈495 on a 1080x2340 screen) and capture the collapsed state.
 tap_text "بستن همه" 440 495
 sleep 2
 shot accounts_collapsed
 
-# the same screen in light mode
+# The same screen in light mode.
 adb shell cmd uimode night no
-sleep 3
+sleep 4
 shot accounts_light
 echo "screenshots written to $OUT"

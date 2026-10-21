@@ -12,6 +12,9 @@ on:
 jobs:
   inspect:
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - run: python3 -m pip install -q pillow
