@@ -1,12 +1,16 @@
 package com.myaccounting.app.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -19,11 +23,14 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myaccounting.app.data.ThemeMode
 import com.myaccounting.app.ui.accounts.AccountsScreen
+import com.myaccounting.app.ui.components.AppToast
 import com.myaccounting.app.ui.theme.Tw
 import com.myaccounting.app.ui.theme.TwText
 import com.myaccounting.app.ui.theme.dk
 import com.myaccounting.app.ui.theme.rem
 import com.myaccounting.app.viewmodel.MainViewModel
+import com.myaccounting.app.viewmodel.ToastMessage
+import kotlinx.coroutines.delay
 
 /** App shell = App.tsx layout: sticky header, page background, fixed bottom bar. Only the Accounts tab is ported. */
 @Composable
@@ -31,13 +38,19 @@ fun AppRoot(vm: MainViewModel, isDark: Boolean, themeMode: ThemeMode) {
     val state by vm.state.collectAsStateWithLifecycle()
     val collapsed by vm.collapsedGroups.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(Tab.ACCOUNTS) }
-    val snackbar = remember { SnackbarHostState() }
 
-    LaunchedEffect(state.message) {
-        state.message?.let {
-            snackbar.showSnackbar(it)
-            vm.consumeMessage()
-        }
+    // ToastModal.tsx: stays on screen for 3 s, then animates out (anim-pop).
+    var toast by remember { mutableStateOf<ToastMessage?>(null) }
+    var toastVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(state.toast?.id) {
+        val t = state.toast ?: return@LaunchedEffect
+        toast = t
+        toastVisible = true
+        delay(3000)
+        toastVisible = false
+        delay(200)
+        toast = null
+        vm.consumeMessage()
     }
 
     Box(Modifier.fillMaxSize().background(dk(Tw.Slate50, Tw.Slate950))) {
@@ -49,7 +62,8 @@ fun AppRoot(vm: MainViewModel, isDark: Boolean, themeMode: ThemeMode) {
                 onSettings = { tab = Tab.SETTINGS },
                 onToggleTheme = { vm.toggleTheme(isDark) },
             )
-            Box(Modifier.weight(1f)) {
+            // The page scrolls above the fixed bottom bar (web: main + the 3.5rem spacer in App.tsx).
+            Box(Modifier.weight(1f).padding(bottom = bottomNavHeight())) {
                 when (tab) {
                     Tab.ACCOUNTS -> AccountsScreen(state, collapsed, vm)
                     Tab.SETTINGS -> SettingsScreen(vm, state, themeMode)
@@ -66,6 +80,13 @@ fun AppRoot(vm: MainViewModel, isDark: Boolean, themeMode: ThemeMode) {
             onFab = { vm.notPorted("ثبت تراکنش جدید") },
             modifier = Modifier.align(Alignment.BottomCenter),
         )
-        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = rem(5f)))
+        AnimatedVisibility(
+            visible = toastVisible && toast != null,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = rem(5f)),
+            enter = fadeIn(tween(160)) + scaleIn(tween(160), initialScale = 0.9f),
+            exit = fadeOut(tween(160)) + scaleOut(tween(160), targetScale = 0.9f),
+        ) {
+            toast?.let { AppToast(it) }
+        }
     }
 }

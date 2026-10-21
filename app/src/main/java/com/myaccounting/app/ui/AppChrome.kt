@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.absoluteOffset
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.myaccounting.app.R
 import com.myaccounting.app.domain.JalaliDate
@@ -145,6 +147,24 @@ fun AppHeader(
 }
 
 /** Port of the mobile bottom bar in components/Navigation.tsx (4 tabs + centre FAB). */
+private const val NAV_VERTICAL_PADDING_REM = 0.375f
+private const val NAV_TAB_PADDING_REM = 0.25f
+private const val NAV_ICON_REM = 1.25f
+private const val NAV_LABEL_GAP_REM = 0.125f
+private const val NAV_LABEL_LINE_REM = 0.9375f
+
+/** Content height of the bar: tab = p-1 + w-5 icon + gap-0.5 + a 0.625rem label; row = py-1.5 around it. */
+private const val NAV_CONTENT_REM =
+    NAV_VERTICAL_PADDING_REM * 2 + NAV_TAB_PADDING_REM * 2 + NAV_ICON_REM + NAV_LABEL_GAP_REM + NAV_LABEL_LINE_REM
+
+/**
+ * Height of the fixed bottom bar (content + its 1px top border + the system navigation inset).
+ * Screens scroll ABOVE the bar, like `main` + the `h-[calc(3.5rem+env(safe-area-inset-bottom))]` spacer in App.tsx.
+ */
+@Composable
+fun bottomNavHeight(): Dp =
+    rem(NAV_CONTENT_REM) + cssBorder() + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
 @Composable
 fun BottomNav(
     active: Tab,
@@ -161,12 +181,12 @@ fun BottomNav(
         val color = if (isActive) dk(Tw.Sky600, Tw.Sky400) else dk(Tw.Slate500, Tw.Slate400)
         Box(Modifier.clickable(none, null) { onTab(tab) }) {
             Column(
-                Modifier.padding(rem(0.25f)),
+                Modifier.padding(rem(NAV_TAB_PADDING_REM)),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(rem(0.125f)),
+                verticalArrangement = Arrangement.spacedBy(rem(NAV_LABEL_GAP_REM)),
             ) {
-                LucideIcon(tab.icon, 1.25f, color)
-                TwText(tab.label, 0.625f, 0.9375f, color, weight = if (isActive) FW.Bold else FW.Medium, maxLines = 1)
+                LucideIcon(tab.icon, NAV_ICON_REM, color)
+                TwText(tab.label, 0.625f, NAV_LABEL_LINE_REM, color, weight = if (isActive) FW.Bold else FW.Medium, maxLines = 1)
             }
             if (tab == Tab.DEPTS && deptsAttention > 0) {
                 Box(
@@ -181,7 +201,7 @@ fun BottomNav(
     Column(modifier.fillMaxWidth().background(dk(Tw.White, Tw.Slate900))) {
         Box(Modifier.fillMaxWidth().height(cssBorder()).background(dk(Tw.Slate200, Tw.Slate800)))
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = rem(0.25f), vertical = rem(0.375f)),
+            Modifier.fillMaxWidth().padding(horizontal = rem(0.25f), vertical = rem(NAV_VERTICAL_PADDING_REM)),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically,
         ) {

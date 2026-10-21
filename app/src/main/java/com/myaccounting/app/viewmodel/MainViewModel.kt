@@ -30,8 +30,12 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-class MainViewModel(application: Application) : AndroidViewModel(application) {
+/** Toast variants of the original app (ToastModal.tsx). */
+enum class ToastKind { SUCCESS, ERROR, WARNING, INFO }
 
+data class ToastMessage(val text: String, val kind: ToastKind, val id: Long)
+
+class MainViewModel(application: Application) : AndroidViewModel(application) {
     data class UiState(
         val loaded: Boolean = false,
         val unit: CurrencyUnit = CurrencyUnit.TOMAN,
@@ -41,7 +45,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val shownDb: AccountingDatabase = AccountingDatabase(),
         val balances: Map<String, Double> = emptyMap(),
         val rateIndex: ExchangeRates.RateIndex? = null,
-        val message: String? = null,
+        /** The app's toast (port of ToastModal.tsx); [ToastMessage.id] changes on every new message. */
+        val toast: ToastMessage? = null,
         /** Unit actually used for display: USD falls back to toman while no rates exist (App.tsx effectiveCurrency). */
         val effectiveUnit: CurrencyUnit = CurrencyUnit.TOMAN,
         /** Number on the bell badge. */
@@ -57,7 +62,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val saveLock = Mutex()
 
     private val dbFlow = MutableStateFlow<AccountingDatabase?>(null)
-    private val messageFlow = MutableStateFlow<String?>(null)
+    private val toastFlow = MutableStateFlow<ToastMessage?>(null)
+    private var nextToastId = 0L
+
+    /** Shows a toast; [ToastMessage.id] makes repeated identical texts restart the timer. */
+    private fun emit(text: String, kind: ToastKind) {
+        toastFlow.value = ToastMessage(text, kind, ++nextToastId)
+    }
 
     val theme: StateFlow<ThemeMode> = prefs.theme.stateIn(viewModelScope, SharingStarted.Eagerly, ThemeMode.SYSTEM)
     private val unitFlow: StateFlow<CurrencyUnit> = prefs.unit.stateIn(viewModelScope, SharingStarted.Eagerly, CurrencyUnit.TOMAN)
@@ -65,16 +76,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val fontScale: StateFlow<Int> = prefs.fontScale.stateIn(viewModelScope, SharingStarted.Eagerly, AppPrefs.DEFAULT_FONT_SCALE)
     val collapsedGroups: StateFlow<Set<String>> = prefs.collapsedGroups.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
-    val state: StateFlow<UiState> = combine(dbFlow, unitFlow, messageFlow) { db, unit, msg ->
+    val state: StateFlow<UiState> = combine(dbFlow, unitFlow, toastFlow) { db, unit, toast ->
         if (db == null) {
-            UiState(loaded = false, unit = unit, effectiveUnit = unit, message = msg)
+            UiState(loaded = false, unit = unit, effectiveUnit = unit, toast = toast)
         } else {
             val idx = ExchangeRates.buildRateIndex(db.exchangeRates)
             val effective = if (unit == CurrencyUnit.USD && idx == null) CurrencyUnit.TOMAN else unit
             val shown = if (effective == CurrencyUnit.USD && idx != null) ExchangeRates.buildUsdViewDb(db, idx) else db
             UiState(
                 loaded = true, unit = unit, db = db, shownDb = shown,
-                balances = Balance.computeAccountBalances(shown), rateIndex = idx, message = msg, effectiveUnit = effective,
+                balances = Balance.computeAccountBalances(shown), rateIndex = idx, toast = toast, effectiveUnit = effective,
                 urgentNotifications = Notifications.urgentCount(db),
                 deptsAttention = LoanSchedule.countVisibleOverdueLoans(db) + Checks.countChecksNeedingAttention(db),
                 ownChecksByAccount = if (effective == CurrencyUnit.USD) emptyMap() else Checks.pendingOwnChecksByAccount(db),
@@ -89,19 +100,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 is DatabaseStore.LoadResult.Corrupt -> {
                     // Never overwrite an unreadable file silently: it was copied aside; start empty and tell the user.
                     dbFlow.value = DatabaseStore.emptyDatabase()
-                    messageFlow.value = "فایل دیتابیس خوانده نشد و نسخه‌ای از آن کنار گذاشته شد: ${r.error}"
+                    emit("فایل دیتابیس خوانده نشد و نسخه‌ای از آن کنار گذاشته شد: ${r.error}", ToastKind.ERROR)
                 }
             }
         }
     }
 
-    fun consumeMessage() { messageFlow.value = null }
+    fun consumeMessage() { toastFlow.value = null }
 
     fun setTheme(mode: ThemeMode) { viewModelScope.launch { prefs.setTheme(mode) } }
 
     fun setUnit(unit: CurrencyUnit) {
         if (unit == CurrencyUnit.USD && dbFlow.value?.exchangeRates.isNullOrEmpty()) {
-            messageFlow.value = "برای نمایش دلاری ابتدا فایل نرخ دلار را وارد کنید."
+            emit("برای نمایش دلاری ابتدا فایل نرخ دلار را وارد کنید.", ToastKind.WARNING)
             return
         }
         viewModelScope.launch { prefs.setUnit(unit) }
@@ -124,9 +135,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setCollapsedGroups(uids: Set<String>) { viewModelScope.launch { prefs.setCollapsedGroups(uids) } }
 
     /** Screens/dialogs that are not ported yet say so instead of silently doing nothing. */
-    fun notPorted(what: String) { messageFlow.value = "$what — این بخش هنوز در نسخه نیتیو منتقل نشده است." }
+    fun notPorted(what: String) { emit("$what — این بخش هنوز در نسخه نیتیو منتقل نشده است.", ToastKind.WARNING) }
 
-    fun warn(message: String) { messageFlow.value = message }
+    fun warn(message: String) { emit(message, ToastKind.WARNING) }
 
     /** Drag & drop: the group [fromUid] takes the position of [toUid] (reorderArray semantics). */
     fun reorderGroups(fromUid: String, toUid: String) {
@@ -159,12 +170,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val text = BackupCodec.decode(readBytes(uri))
                 val parsed = Json.parse(text)
                 val v = DatabaseCodec.validate(parsed)
-                if (!v.ok) { messageFlow.value = v.reason; return@launch }
+                if (!v.ok) { emit(v.reason, ToastKind.ERROR); return@launch }
                 val result = withContext(Dispatchers.Default) { DatabaseCodec.normalize(parsed) }
                 persist(result.db)
-                messageFlow.value = "ایمپورت انجام شد — ${v.stats}" + if (result.repaired.isNotEmpty()) " (${result.repaired.size} مورد ترمیم)" else ""
+                emit(
+                    "ایمپورت انجام شد — ${v.stats}" + if (result.repaired.isNotEmpty()) " (${result.repaired.size} مورد ترمیم)" else "",
+                    ToastKind.SUCCESS,
+                )
             } catch (e: Exception) {
-                messageFlow.value = "ایمپورت ناموفق بود: ${e.message ?: e.javaClass.simpleName}"
+                emit("ایمپورت ناموفق بود: ${e.message ?: e.javaClass.simpleName}", ToastKind.ERROR)
             }
         }
     }
@@ -178,9 +192,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         it.write(DatabaseCodec.toJson(db).toByteArray(Charsets.UTF_8))
                     } ?: throw IllegalStateException("فایل مقصد باز نشد")
                 }
-                messageFlow.value = "بکاپ ذخیره شد."
+                emit("بکاپ ذخیره شد.", ToastKind.SUCCESS)
             } catch (e: Exception) {
-                messageFlow.value = "ذخیره بکاپ ناموفق بود: ${e.message ?: e.javaClass.simpleName}"
+                emit("ذخیره بکاپ ناموفق بود: ${e.message ?: e.javaClass.simpleName}", ToastKind.ERROR)
             }
         }
     }
@@ -192,12 +206,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val text = String(readBytes(uri), Charsets.UTF_8)
                 val parsed = ExchangeRates.parseRateFile(text, fileUnit)
-                if (parsed.rows.isEmpty()) { messageFlow.value = "هیچ ردیف معتبری در فایل نرخ پیدا نشد (${parsed.invalid} ردیف نامعتبر)."; return@launch }
+                if (parsed.rows.isEmpty()) { emit("هیچ ردیف معتبری در فایل نرخ پیدا نشد (${parsed.invalid} ردیف نامعتبر).", ToastKind.WARNING); return@launch }
                 val merged = ExchangeRates.mergeRates(db.exchangeRates, parsed.rows, overwrite = false)
                 persist(db.copy(exchangeRates = merged.merged))
-                messageFlow.value = "نرخ دلار: ${merged.added} روز جدید اضافه شد، ${merged.skippedExisting} روز تکراری رد شد، ${parsed.invalid} ردیف نامعتبر."
+                emit("نرخ دلار: ${merged.added} روز جدید اضافه شد، ${merged.skippedExisting} روز تکراری رد شد، ${parsed.invalid} ردیف نامعتبر.", ToastKind.SUCCESS)
             } catch (e: Exception) {
-                messageFlow.value = "وارد کردن نرخ دلار ناموفق بود: ${e.message ?: e.javaClass.simpleName}"
+                emit("وارد کردن نرخ دلار ناموفق بود: ${e.message ?: e.javaClass.simpleName}", ToastKind.ERROR)
             }
         }
     }
