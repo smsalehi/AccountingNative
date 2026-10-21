@@ -37,7 +37,9 @@ jobs:
           arch: x86_64
           profile: pixel_6
           force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          # The API 36 image defaults to a 7372 MB userdata partition, which does not fit the runner's disk.
+          disk-size: 2048M
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           disable-animations: true
           script: ./tools/screenshot/run.sh
 

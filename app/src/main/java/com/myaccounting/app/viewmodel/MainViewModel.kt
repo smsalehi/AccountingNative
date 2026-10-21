@@ -170,7 +170,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val text = BackupCodec.decode(readBytes(uri))
                 val parsed = Json.parse(text)
                 val v = DatabaseCodec.validate(parsed)
-                if (!v.ok) { emit(v.reason, ToastKind.ERROR); return@launch }
+                if (!v.ok) { emit(v.reason ?: "ساختار فایل بکاپ معتبر نیست.", ToastKind.ERROR); return@launch }
                 val result = withContext(Dispatchers.Default) { DatabaseCodec.normalize(parsed) }
                 persist(result.db)
                 emit(

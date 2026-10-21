@@ -13,10 +13,8 @@ import androidx.compose.ui.graphics.Color
 import com.myaccounting.app.R
 import com.myaccounting.app.ui.theme.FW
 import com.myaccounting.app.ui.theme.Tw
-import com.myaccounting.app.ui.theme.TwShadow
 import com.myaccounting.app.ui.theme.TwText
 import com.myaccounting.app.ui.theme.a
-import com.myaccounting.app.ui.theme.cssShadow
 import com.myaccounting.app.ui.theme.rem
 import com.myaccounting.app.viewmodel.ToastKind
 import com.myaccounting.app.viewmodel.ToastMessage
