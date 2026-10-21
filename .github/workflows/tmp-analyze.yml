@@ -65,6 +65,16 @@ jobs:
                   out = Image.new("RGB", (W, nn.height * 3))
                   out.paste(rr, (0, 0)); out.paste(nn, (0, nn.height)); out.paste(dd, (0, nn.height * 2))
                   out.save(f"out/{name}_{label}.png")
+
+          modal = Image.open("shots/account_settings.png").convert("RGB")
+          modal.crop((0, 100, W, 620)).save("out/modal_top.png")
+          modal.crop((0, 1950, W, 2340)).save("out/modal_footer.png")
+          picker = Image.open("shots/bank_picker.png").convert("RGB")
+          picker.resize((W // 2, picker.height // 2)).save("out/picker_half.png")
+          newacc = Image.open("shots/account_new.png").convert("RGB")
+          newacc.crop((0, 100, W, 700)).save("out/new_top.png")
+          newacc.crop((0, 1900, W, 2340)).save("out/new_footer.png")
+          print("modal/picker crops written")
           PY
       - uses: actions/upload-artifact@v4
         with:

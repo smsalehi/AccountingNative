@@ -48,8 +48,12 @@ class AppPrefs(private val context: Context) {
     private fun today(): String = java.time.LocalDate.now().toString()
 
     companion object {
-        /** Measured from the user's screenshots: 1 rem = 46.3 device px at density 2.75 → 16.84dp → 105 %. */
-        const val DEFAULT_FONT_SCALE = 105
+        /**
+         * The web app's default (html font-size = 16px, i.e. 1rem = 44 device px at density 2.75).
+         * Measured: the reference title «حساب‌ها و کارت‌های بانکی» is 569 px wide at 100 %, and the
+         * native render at 105 % was 5 % wider (598 px), so the reference screenshots are at 100 %.
+         */
+        const val DEFAULT_FONT_SCALE = 100
         const val MIN_FONT_SCALE = 80
         const val MAX_FONT_SCALE = 150
     }
