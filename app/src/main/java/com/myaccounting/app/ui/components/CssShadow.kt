@@ -21,10 +21,13 @@ class ShadowLayer(val y: Float, val blur: Float, val spread: Float, val color: C
 object TwShadow {
     private val black05 = Color(0f, 0f, 0f, 0.05f)
     private val black10 = Color(0f, 0f, 0f, 0.10f)
+    private val black25 = Color(0f, 0f, 0f, 0.25f)
     fun xxs(c: Color = black05) = listOf(ShadowLayer(1f, 0f, 0f, c))
     fun xs(c: Color = black05) = listOf(ShadowLayer(1f, 2f, 0f, c))
     fun md(c: Color = black10) = listOf(ShadowLayer(4f, 6f, -1f, c), ShadowLayer(2f, 4f, -2f, c))
     fun lg(c: Color = black10) = listOf(ShadowLayer(10f, 15f, -3f, c), ShadowLayer(4f, 6f, -4f, c))
+    /** shadow-2xl */
+    fun xxl(c: Color = black25) = listOf(ShadowLayer(25f, 50f, -12f, c))
 }
 
 /**

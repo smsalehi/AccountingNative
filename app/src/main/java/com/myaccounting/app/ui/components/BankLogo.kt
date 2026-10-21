@@ -39,16 +39,14 @@ private val DarkLogoFilter = ColorFilter.colorMatrix(
     ),
 )
 
-/** Port of components/BankLogo.tsx, size "md" (w-9 h-9 p-1.5, rounded-xl). */
+/** Port of components/BankLogo.tsx. Sizes: xs 1.5rem/p-0.5, sm 1.75/p-1, md 2.25/p-1.5, lg 2.75/p-2, xl 3.5/p-2.5. */
 @Composable
-fun BankLogo(bankName: String?, bankUid: String?) {
+fun BankLogo(bankName: String?, bankUid: String?, sizeRem: Float = 2.25f, padRem: Float = 0.375f) {
     val name = (bankName ?: "").trim()
     fun match(term: String) = name.lowercase().contains(term.lowercase())
 
     val shape = RoundedCornerShape(rem(0.75f))
     val bw = cssBorder()
-    val sizeRem = 2.25f
-    val padRem = 0.375f
 
     @Composable
     fun Solid(bg: Color, @DrawableRes res: Int) {

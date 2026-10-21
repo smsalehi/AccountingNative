@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.myaccounting.app.data.AppPrefs
 import com.myaccounting.app.data.DatabaseStore
 import com.myaccounting.app.data.ThemeMode
+import com.myaccounting.app.domain.Account
+import com.myaccounting.app.domain.AccountGroup
 import com.myaccounting.app.domain.AccountingDatabase
 import com.myaccounting.app.domain.Balance
 import com.myaccounting.app.domain.Checks
@@ -161,6 +163,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val t = title.trim()
         if (t.isEmpty()) return
         viewModelScope.launch { persist(db.copy(accountGroups = db.accountGroups.map { if (it.uid == uid) it.copy(title = t) else it })) }
+    }
+
+    /** AccountSettingsModal's onAddAccount / onUpdateAccount: one entry point, decided by UID. */
+    fun saveAccount(account: Account) {
+        val db = dbFlow.value ?: return
+        if (unitFlow.value == CurrencyUnit.USD) { warn(Currency.USD_READONLY_MESSAGE); return }
+        val accounts = if (db.accounts.any { it.uid == account.uid }) {
+            db.accounts.map { if (it.uid == account.uid) account else it }
+        } else {
+            db.accounts + account
+        }
+        // A database without groups (fresh install) would hide the very first account; give it a home.
+        val groups = if (db.accountGroups.isEmpty()) {
+            listOf(AccountGroup("grp_default", "گروه پیش‌فرض"))
+        } else {
+            db.accountGroups
+        }
+        viewModelScope.launch { persist(db.copy(accounts = accounts, accountGroups = groups)) }
+    }
+
+    /** Deletes only the account (transactions keep their UIDs, exactly like the original). */
+    fun deleteAccount(uid: String) {
+        val db = dbFlow.value ?: return
+        if (unitFlow.value == CurrencyUnit.USD) { warn(Currency.USD_READONLY_MESSAGE); return }
+        viewModelScope.launch { persist(db.copy(accounts = db.accounts.filter { it.uid != uid })) }
     }
 
     /** Replaces the whole database with the content of a backup file (.json / .json.gz / legacy base64). */

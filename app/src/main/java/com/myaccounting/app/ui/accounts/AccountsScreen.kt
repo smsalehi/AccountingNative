@@ -107,6 +107,7 @@ fun AccountsScreen(state: MainViewModel.UiState, collapsed: Set<String>, vm: Mai
     var showHidden by rememberSaveable { mutableStateOf(false) }
     var editingUid by rememberSaveable { mutableStateOf<String?>(null) }
     var editingTitle by rememberSaveable { mutableStateOf("") }
+    var settingsAccount by remember { mutableStateOf<Account?>(null) }
     val dnd = remember { Dnd() }
     val bankTitles = remember(db.banks) { db.banks.associate { it.uid to it.title } }
     val areAllCollapsed = groups.isNotEmpty() && groups.all { it.uid in collapsed }
@@ -128,7 +129,13 @@ fun AccountsScreen(state: MainViewModel.UiState, collapsed: Set<String>, vm: Mai
                     bg = Tw.Emerald600, fg = Tw.White, icon = R.drawable.ic_lucide_plus, iconRem = 1f, iconTint = Tw.White,
                     text = "جدید", hPadRem = 0.875f, shadow = true,
                 ) {
-                    if (unit == CurrencyUnit.USD) vm.warn(Currency.USD_READONLY_MESSAGE) else vm.notPorted("افزودن حساب جدید")
+                    if (unit == CurrencyUnit.USD) vm.warn(Currency.USD_READONLY_MESSAGE) else {
+                        settingsAccount = Account(
+                            uid = "acc_${System.currentTimeMillis()}",
+                            title = "حساب بانکی جدید",
+                            groupUid = groups.firstOrNull()?.uid ?: "grp_default",
+                        )
+                    }
                 }
                 PillButton(
                     bg = Tw.Sky600, fg = Tw.White, icon = R.drawable.ic_lucide_arrow_left_right, iconRem = 0.875f, iconTint = Tw.White,
@@ -165,10 +172,25 @@ fun AccountsScreen(state: MainViewModel.UiState, collapsed: Set<String>, vm: Mai
                     bankTitles = bankTitles, balances = state.balances, ownChecks = state.ownChecksByAccount,
                     onSelectAccount = { vm.notPorted("نمایش تراکنش‌های حساب") },
                     onNewTransaction = { vm.notPorted("ثبت تراکنش") },
-                    onAccountSettings = { if (unit == CurrencyUnit.USD) vm.warn(Currency.USD_READONLY_MESSAGE) else vm.notPorted("تنظیمات حساب") },
+                    onAccountSettings = { uid -> if (unit == CurrencyUnit.USD) vm.warn(Currency.USD_READONLY_MESSAGE) else settingsAccount = db.accounts.firstOrNull { it.uid == uid } },
                 )
             }
         }
+    }
+
+    settingsAccount?.let { acc ->
+        AccountSettingsDialog(
+            account = acc,
+            db = db,
+            unit = unit,
+            balance = state.balances[acc.uid] ?: 0.0,
+            txCount = db.transactions.count { it.sourceAccountUid == acc.uid || it.destinationAccountUid == acc.uid },
+            onClose = { settingsAccount = null },
+            onSave = { vm.saveAccount(it); settingsAccount = null },
+            onDelete = { vm.deleteAccount(it) },
+            onViewTransactions = { vm.notPorted("نمایش تراکنش‌های حساب") },
+            onQuickTransaction = { vm.notPorted("ثبت تراکنش") },
+        )
     }
 }
 

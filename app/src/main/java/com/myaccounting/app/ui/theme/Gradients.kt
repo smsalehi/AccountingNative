@@ -51,8 +51,13 @@ fun oklabAt(colors: List<Color>, t: Float): Color {
 }
 
 /** `bg-gradient-to-tr` — from the bottom-left corner to the top-right corner (45° for a square), OKLab interpolated. */
-fun toTopRightBrush(size: Size, colors: List<Color>, steps: Int = 32): Brush {
-    val list = colors
-    val stops = Array(steps + 1) { i -> (i / steps.toFloat()) to oklabAt(list, i / steps.toFloat()) }
-    return Brush.linearGradient(colorStops = stops, start = Offset(0f, size.height), end = Offset(size.width, 0f))
+fun toTopRightBrush(size: Size, colors: List<Color>, steps: Int = 32): Brush = oklabBrush(size, colors, Offset(0f, size.height), Offset(size.width, 0f), steps)
+
+/** `bg-gradient-to-br` — from the top-left corner to the bottom-right corner, OKLab interpolated. */
+fun toBottomRightBrush(size: Size, colors: List<Color>, steps: Int = 32): Brush = oklabBrush(size, colors, Offset.Zero, Offset(size.width, size.height), steps)
+
+/** Any linear gradient between two points with Tailwind v4's OKLab interpolation. */
+fun oklabBrush(size: Size, colors: List<Color>, from: Offset, to: Offset, steps: Int = 32): Brush {
+    val stops = Array(steps + 1) { i -> (i / steps.toFloat()) to oklabAt(colors, i / steps.toFloat()) }
+    return Brush.linearGradient(colorStops = stops, start = from, end = to)
 }

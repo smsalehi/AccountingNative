@@ -17,6 +17,7 @@ object Tw {
     val Slate800 = Color(0xFF1D293D)
     val Slate900 = Color(0xFF0F172B)
     val Slate950 = Color(0xFF020618)
+    val Zinc950 = Color(0xFF09090B)
     val Sky50 = Color(0xFFF0F9FF)
     val Sky100 = Color(0xFFDFF2FE)
     val Sky200 = Color(0xFFB8E6FE)
