@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -17,7 +18,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.core.content.ContextCompat
 import com.myaccounting.app.R
 import com.myaccounting.app.domain.IranianBanks
 import com.myaccounting.app.ui.theme.LocalIsDark
@@ -67,6 +70,16 @@ fun BankLogo(bankName: String?, bankUid: String?, sizeRem: Float = 2.25f, padRem
 
     @Composable
     fun FileLogo(@DrawableRes res: Int) {
+        val ctx = LocalContext.current
+        val resName = remember(res) { runCatching { ctx.resources.getResourceEntryName(res) }.getOrNull() ?: res.toString() }
+        // A malformed vector throws *inside* composition and kills the whole app. Validate it first
+        // (the framework parses the same path data) and fall back to the generic bank logo.
+        val loadable = remember(res) {
+            runCatching { ContextCompat.getDrawable(ctx, res) }.onFailure { e ->
+                android.util.Log.e("BankLogo", "unloadable logo $resName for '${bankName ?: ""}' (${bankUid ?: ""}): ${e.message}")
+            }.isSuccess
+        }
+        android.util.Log.d("BankLogo", "logo $resName loadable=$loadable for '${bankName ?: ""}'")
         Box(
             Modifier.size(rem(sizeRem)).cssShadow(TwShadow.xs(), rem(0.75f))
                 .background(dk(Tw.White, Tw.Slate800), shape)
@@ -74,10 +87,17 @@ fun BankLogo(bankName: String?, bankUid: String?, sizeRem: Float = 2.25f, padRem
                 .clip(shape).padding(rem(padRem) + bw),
             contentAlignment = Alignment.Center,
         ) {
-            Image(
-                painterResource(res), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit,
-                colorFilter = if (LocalIsDark.current) DarkLogoFilter else null,
-            )
+            if (loadable) {
+                Image(
+                    painterResource(res), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit,
+                    colorFilter = if (LocalIsDark.current) DarkLogoFilter else null,
+                )
+            } else {
+                Image(
+                    painterResource(R.drawable.bank_fb_generic), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit,
+                    colorFilter = ColorFilter.tint(dk(Tw.Slate600, Tw.Slate300)),
+                )
+            }
         }
     }
 

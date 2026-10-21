@@ -86,6 +86,13 @@ fun TwModal(
             // No platform dim: the scrim below is the web's exact colour/alpha.
             val window = (view.parent as? DialogWindowProvider)?.window
             window?.setDimAmount(0f)
+            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                // Otherwise the framework fits the dialog window to the status bar: the window is
+                // shifted down (and reports zero insets), so the card's footer ended up underneath
+                // the navigation bar. Fitting no insets makes it cover the display edge to edge and
+                // `safeDrawing` then reports the real bar sizes.
+                window?.setFitInsetsTypes(0)
+            }
             onDispose { }
         }
         val none = remember { MutableInteractionSource() }
