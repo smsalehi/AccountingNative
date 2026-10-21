@@ -57,9 +57,17 @@ jobs:
       - name: Diff against the original app's screenshots
         if: always()
         run: |
-          pip install -q pillow
-          python3 tools/screenshot/diff.py screenshots/accounts_expanded.png docs/reference/accounts_expanded.png screenshots/expanded | tee screenshots/report.txt
-          python3 tools/screenshot/diff.py screenshots/accounts_collapsed.png docs/reference/accounts_collapsed.png screenshots/collapsed | tee -a screenshots/report.txt
+          python3 -m pip install -q pillow
+          mkdir -p screenshots/crops
+          : > screenshots/report.txt
+          for name in expanded collapsed; do
+            if [ -f "screenshots/accounts_$name.png" ]; then
+              python3 tools/screenshot/diff.py "screenshots/accounts_$name.png" "docs/reference/accounts_$name.png" "screenshots/$name" | tee -a screenshots/report.txt || true
+              python3 tools/screenshot/crops.py "screenshots/accounts_$name.png" "docs/reference/accounts_$name.png" screenshots/crops "$name" || true
+            else
+              echo "screenshots/accounts_$name.png missing" >> screenshots/report.txt
+            fi
+          done
 
       - uses: actions/upload-artifact@v4
         if: always()

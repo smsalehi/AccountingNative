@@ -21,8 +21,8 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -73,7 +73,9 @@ fun AppHeader(
     Column(Modifier.fillMaxWidth().background(dk(Tw.White, Tw.Slate900))) {
         Row(
             Modifier.fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                // The web app's header is inset by the status bar only (env(safe-area-inset-top));
+                // safeDrawing would also add the display cutout and push the whole page down.
+                .windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top))
                 .height(rem(4f)).padding(horizontal = rem(1f)),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,

@@ -11,6 +11,10 @@ adb shell cmd uimode night yes            # dark theme (theme default = follow s
 adb shell settings put global window_animation_scale 0
 adb shell settings put global transition_animation_scale 0
 adb shell settings put global animator_duration_scale 0
+# Keep the screen on: a sleeping emulator locked itself and captured the wallpaper instead of the app.
+adb shell svc power stayon true
+adb shell settings put system screen_off_timeout 2147483647
+adb shell wm dismiss-keyguard || true
 # A first boot on swiftshader is slow; never let a System UI ANR dialog cover the app.
 adb shell settings put global hide_error_dialogs 1
 adb shell settings put global anr_show_background 0
@@ -27,10 +31,10 @@ adb push sample_db.json /data/local/tmp/sample_db.json
 adb shell run-as $PKG mkdir -p files
 adb shell run-as $PKG cp /data/local/tmp/sample_db.json files/smart_accounting_db_v1.json
 adb shell am start -n $PKG/.MainActivity
-sleep 18
+sleep 12
 
 # Wait until our activity owns the focused window (dismiss a lingering dialog with "Wait").
-for _ in $(seq 1 15); do
+for _ in $(seq 1 10); do
   focus=$(adb shell dumpsys window 2>/dev/null | grep -m1 mCurrentFocus || true)
   case "$focus" in
     *$PKG*) echo "focused: $focus"; break ;;
@@ -38,38 +42,50 @@ for _ in $(seq 1 15); do
   esac
 done
 
-adb exec-out screencap -p > "$OUT/accounts_expanded.png"
+shot() {
+  adb shell wm dismiss-keyguard >/dev/null 2>&1 || true
+  adb shell pidof "$PKG" >/dev/null || echo "WARNING: $PKG is not running before $1"
+  adb exec-out screencap -p > "$OUT/$1.png"
+}
+
+relaunch() {
+  adb shell am force-stop $PKG
+  adb shell am start -n $PKG/.MainActivity
+  sleep 6
+}
 
 # Coordinates from the reference screenshot (1080x2340) are the fallback when semantics are missing.
 tap_text() { python3 tools/screenshot/tap_text.py "$1" "${2:-}" "${3:-}" || true; }
 
+shot accounts_expanded
+
 # settings modal of the first account (tap the gear on the card)
 tap_text "تنظیمات حساب" 173 778
 sleep 2
-adb exec-out screencap -p > "$OUT/account_settings.png"
+adb logcat -d -v brief AndroidRuntime:E '*:S' > "$OUT/crash.txt" 2>/dev/null || true
+shot account_settings
 
 # inside it, open the bank picker
 tap_text "تغییر بانک"
 sleep 2
-adb exec-out screencap -p > "$OUT/bank_picker.png"
+shot bank_picker
 
-# close the picker and the settings modal
-adb shell input keyevent 4; sleep 1
-adb shell input keyevent 4; sleep 1
+# go back to a clean accounts screen instead of pressing back (which can reach the launcher)
+relaunch
 
 # new-account modal («جدید» in the header)
 tap_text "جدید" 774 413
 sleep 2
-adb exec-out screencap -p > "$OUT/account_new.png"
-adb shell input keyevent 4; sleep 1
+shot account_new
+relaunch
 
 # tap «بستن همه» (x≈440, y≈495 on a 1080x2340 screen) and capture the collapsed state
 tap_text "بستن همه" 440 495
 sleep 2
-adb exec-out screencap -p > "$OUT/accounts_collapsed.png"
+shot accounts_collapsed
 
 # the same screen in light mode
 adb shell cmd uimode night no
 sleep 3
-adb exec-out screencap -p > "$OUT/accounts_light.png"
+shot accounts_light
 echo "screenshots written to $OUT"

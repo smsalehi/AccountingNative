@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Builds a sample database (original backup format) that reproduces what the reference screenshots show:
-group totals 108,065,129 / 1,841,360,194 / 0, the three visible cards, «پس از چک‌ها: -135,989,008» and a bell badge of 1."""
+group totals 108,065,129 / 1,881,360,194 / 0, the three visible cards, «پس از چک‌ها: -135,989,008» and a bell badge of 1."""
 import json, sys, time
 
 now_ms = int(time.time() * 1000)
@@ -18,7 +18,7 @@ accounts = [
     acc("acc_4", "حساب نمونه ۱", "grp_1", 6000000),
     acc("acc_5", "حساب نمونه ۲", "grp_1", 6000000),
     acc("acc_6", "حساب نمونه ۳", "grp_1", 6655181),
-] + [acc(f"acc_{i}", f"پس‌انداز نمونه {i-6}", "grp_2", 250000000) for i in range(7, 13)] + [
+] + [acc(f"acc_{i}", f"پس‌انداز نمونه {i-6}", "grp_2", 290000000 if i == 12 else 250000000) for i in range(7, 13)] + [
     acc("acc_13", "پس‌انداز نمونه ۷", "grp_2", 341360194),
     acc("acc_14", "کیف پول", "grp_3", 0),
 ]

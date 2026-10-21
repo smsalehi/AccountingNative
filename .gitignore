@@ -8,3 +8,6 @@
 *.jks
 *.keystore
 .env
+
+# emulator screenshots downloaded from CI
+docs/render/
