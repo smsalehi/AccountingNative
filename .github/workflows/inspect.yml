@@ -34,3 +34,7 @@ jobs:
           echo "---- reference landmarks ----"
           python3 tools/screenshot/measure.py docs/reference/accounts_collapsed.png
           python3 tools/screenshot/measure.py docs/reference/accounts_expanded.png
+          echo "---- modal landmarks ----"
+          for name in account_settings bank_picker account_new accounts_light; do
+            [ -f "shots/$name.png" ] && python3 tools/screenshot/measure.py "shots/$name.png"
+          done

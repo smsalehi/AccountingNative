@@ -57,38 +57,58 @@ shot() {
 relaunch() {
   adb shell am force-stop $PKG
   adb shell am start -n $PKG/.MainActivity
-  sleep 6
+  sleep 8
+  for _ in $(seq 1 10); do
+    focus=$(adb shell dumpsys window 2>/dev/null | grep -m1 mCurrentFocus || true)
+    case "$focus" in
+      *$PKG*) echo "relaunched: $focus"; break ;;
+    esac
+    sleep 2
+  done
+  # let the first frame draw (swiftshader + a cold start can take a few seconds)
+  sleep 10
 }
 
-# Coordinates from the reference screenshot (1080x2340) are the fallback when semantics are missing.
-tap_text() { python3 tools/screenshot/tap_text.py "$1" "${2:-}" "${3:-}" || true; }
+# Tap via uiautomator semantics; retry a few times, then use the reference coordinate.
+tap_text() {
+  local text="$1" fx="${2:-}" fy="${3:-}"
+  for _ in 1 2 3 4; do
+    if python3 tools/screenshot/tap_text.py "$text"; then return 0; fi
+    sleep 2
+  done
+  if [ -n "$fx" ] && [ -n "$fy" ]; then
+    echo "tap_text: '$text' not in the tree, tapping fallback $fx,$fy"
+    adb shell input tap "$fx" "$fy"
+  fi
+  return 0
+}
 
-# Settings modal of the first account (tap the gear on the card).
-tap_text "تنظیمات حساب" 173 778
-sleep 2
+# Settings modal of the first account (the gear has a content description).
+tap_text "تنظیمات حساب" 200 982
+sleep 3
 adb logcat -d -v brief AndroidRuntime:E '*:S' > "$OUT/crash.txt" 2>/dev/null || true
 shot account_settings
 
-# Inside it, open the bank picker.
-tap_text "تغییر بانک"
-sleep 2
+# Inside it, open the bank picker (fallback: the «تغییر بانک» row).
+tap_text "تغییر بانک" 700 1650
+sleep 3
 shot bank_picker
 
 # Go back to a clean accounts screen instead of pressing back (which can reach the launcher).
 relaunch
 
-# New-account modal («جدید» in the header).
-tap_text "جدید" 774 413
-sleep 2
+# New-account modal («جدید» in the header; reference bbox 819..1032 x 449..541).
+tap_text "جدید" 925 495
+sleep 3
 shot account_new
 relaunch
 
-# Expanded accounts screen. Captured late so SystemUI (status bar + its inset) is definitely up.
+# Expanded accounts screen (captured late so SystemUI, and with it the real top inset, is up).
 shot accounts_expanded
 
-# Tap «بستن همه» (x≈440, y≈495 on a 1080x2340 screen) and capture the collapsed state.
-tap_text "بستن همه" 440 495
-sleep 2
+# Tap «بستن همه» (reference bbox y 449..541, centred at x≈540) and capture the collapsed state.
+tap_text "بستن همه" 540 495
+sleep 3
 shot accounts_collapsed
 
 # The same screen in light mode.

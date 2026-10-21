@@ -35,6 +35,10 @@ object FW {
 /**
  * A text exactly like a CSS text with `font-size: sizeRem` and `line-height: lineRem` (both in rem):
  * fixed line box, glyphs centred in it (CSS half-leading), inherited `direction: rtl`.
+ *
+ * Trim.Both is what makes the line box *exactly* `lineRem`, like a CSS line box. With Trim.None the
+ * box grows to Vazirmatn's natural ascent+descent (+≈8 px at 0.75 rem, +≈10 px at 1.25 rem), which
+ * made buttons and the title taller than the reference and pushed everything below them down.
  */
 @Composable
 fun TwText(
@@ -66,7 +70,7 @@ fun TwText(
             letterSpacing = trackingEm.em,
             textAlign = align,
             textDirection = direction,
-            lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
+            lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
         ),
     )
 }

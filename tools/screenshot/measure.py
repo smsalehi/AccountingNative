@@ -48,6 +48,11 @@ def sky(c):
     return b > 150 and 90 < g < 190 and r < 90
 
 
+def rose(c):
+    r, g, b = c
+    return r > 180 and g < 90 and b < 120
+
+
 def best_shift(native, ref, y0=200, y1=1650, rng=90):
     a = native.convert("L")
     b = ref.convert("L").crop((0, y0, native.width, y1))
@@ -79,6 +84,9 @@ def report(path, ref_path=None):
     print(" amber (sun) bbox:", sun)
     print(" green (new button) bbox:", bbox(im, green, (0, 250, w, 700)))
     print(" sky (transfer button) bbox:", bbox(im, sky, (0, 250, w, 700)))
+    print(" bottom sky bbox:", bbox(im, sky, (0, 1500, w, h)))
+    print(" bottom rose bbox:", bbox(im, rose, (0, 1500, w, h)))
+    print(" bottom green bbox:", bbox(im, green, (0, 1500, w, h)))
     if ref_path:
         ref = Image.open(ref_path).convert("RGB")
         if ref.size != im.size:

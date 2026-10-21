@@ -352,7 +352,7 @@ private fun GroupTitleEditor(value: String, onChange: (String) -> Unit, onSave: 
             textStyle = TextStyle(
                 fontFamily = Vazirmatn, fontSize = remSp(0.875f), lineHeight = remSp(1.25f), fontWeight = FontWeight.Bold, color = textColor,
                 textDirection = TextDirection.Rtl,
-                lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
+                lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
             ),
             cursorBrush = SolidColor(textColor),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
