@@ -7,6 +7,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -20,6 +22,7 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.em
 import com.myaccounting.app.R
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalTextApi::class)
 val Vazirmatn: FontFamily = FontFamily(
@@ -55,9 +58,14 @@ fun TwText(
     direction: TextDirection = TextDirection.Rtl,
     family: FontFamily = Vazirmatn,
 ) {
+    // A CSS line box is exactly `line-height` tall, even when the font's ascent+descent is bigger;
+    // the glyphs simply overflow it. Compose never shrinks a line below the font's natural height,
+    // so for single-line text (buttons, pills, the page title, labels …) override the reported height
+    // and centre the (possibly taller) text inside it — the same half-leading CSS applies.
+    val lineBoxPx = with(LocalDensity.current) { rem(lineRem).toPx() }.roundToInt()
     Text(
         text = text,
-        modifier = modifier,
+        modifier = if (maxLines == 1) modifier.exactLineBox(lineBoxPx) else modifier,
         color = color,
         maxLines = maxLines,
         overflow = overflow,
@@ -77,6 +85,15 @@ fun TwText(
             lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
         ),
     )
+}
+
+/** Report exactly `heightPx` (the CSS line box) and centre the measured text inside it. */
+private fun Modifier.exactLineBox(heightPx: Int): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+    val h = heightPx.coerceIn(constraints.minHeight, constraints.maxHeight)
+    layout(placeable.width, h) {
+        placeable.place(0, (h - placeable.height) / 2)
+    }
 }
 
 /**
