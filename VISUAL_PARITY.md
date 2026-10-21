@@ -31,14 +31,22 @@ borders are 2 px (Chrome floors 1 CSS px × 2.75). The native default font scale
 | collapsed group card | 214 px | 212.3 px |
 | account card with «پس از چک‌ها» | 406 px | 405.3 px |
 
+## How the match is verified
+`.github/workflows/screenshots.yml` (workflow_dispatch) builds the debug APK, boots an API 36 Pixel 6 AVD at **1080×2340 / 440 dpi, dark theme, 3-button nav**, seeds `tools/screenshot/make_sample_db.py` (the reference groups, cards, check and loan), and captures:
+`accounts_expanded`, `account_settings` (gear on the first card), `bank_picker` («تغییر بانک»), `account_new` («جدید»), `accounts_collapsed` («بستن همه») and `accounts_light`.
+`tools/screenshot/diff.py` reports the pixel difference against `docs/reference/accounts_*.png` (status bar and system nav bar masked) and `crops.py` writes 1:1 crops of the header, buttons, group header, cards and bottom bar to `screenshots/crops/` in the artifact.
+
+The header is inset by `WindowInsets.statusBars` only, like the web's `env(safe-area-inset-top)`; `safeDrawing` would add the Pixel 6 display-cutout inset and shift the whole page down by ≈36 px.
+
 ## Known differences / unverified
 1. **Bottom bar:** in the screenshot the original bar is cut off by ≈16 px at the bottom (the WebView extends under the system bar). The native bar is complete and sits above the navigation inset.
 2. `dark:drop-shadow-lg` on bank logos (a faint 15 % black blur) is not drawn; the `brightness(1.25) contrast(1.25)` filter is.
 3. Text baseline positions rely on Compose reproducing CSS half-leading for Vazirmatn; the emulator screenshots are the check.
 4. Card number uses the platform monospace font (the original's `font-mono` stack differs per device).
 5. Dashed border of dormant accounts: dash pattern approximated.
-6. Status bar / system navigation bar colours are the OS's; the header paints behind the status bar.
-7. Hover/active states are not applicable on touch; no ripple is used (the original has none).
-8. The blurred gradient blobs inside the virtual account card are radial gradients rather than a 24 px blur (the card is clipped the same way).
-9. Modals are centred the same way but `sm:` breakpoints are not applied (the phone width is below 640 dp anyway).
-10. Not ported yet: other tabs, the bell/notification dropdown, group settings, transaction entry/transfer, the transactions screen and the Settings screen details. Those actions show the style-matched warning toast instead of doing nothing.
+6. Status bar / system navigation bar colours are the OS's; the header paints behind the status bar. The emulator's status bar height can differ from the reference phone's, so the page starts a few px lower and its clock/icons (masked in the diff) are not comparable.
+7. The header date chip shows the device's **current** Jalali date, so that chip (and the logo position after it) always differs from the reference capture date.
+8. Hover/active states are not applicable on touch; no ripple is used (the original has none).
+9. The blurred gradient blobs inside the virtual account card are radial gradients rather than a 24 px blur (the card is clipped the same way).
+10. Modals are centred the same way but `sm:` breakpoints are not applied (the phone width is below 640 dp anyway).
+11. Not ported yet: other tabs, the bell/notification dropdown, group settings, transaction entry/transfer, the transactions screen and the Settings screen details. Those actions show the style-matched warning toast instead of doing nothing.
