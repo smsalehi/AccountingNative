@@ -10,17 +10,15 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -38,7 +36,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.PlatformTextStyle
@@ -49,10 +46,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.myaccounting.app.ui.theme.FW
+import com.myaccounting.app.ui.theme.LocalSafeInsets
 import com.myaccounting.app.ui.theme.LocalIsDark
 import com.myaccounting.app.ui.theme.Tw
 import com.myaccounting.app.ui.theme.TwText
@@ -86,36 +85,37 @@ fun TwModal(
             // No platform dim: the scrim below is the web's exact colour/alpha.
             val window = (view.parent as? DialogWindowProvider)?.window
             window?.setDimAmount(0f)
-            // A MATCH_PARENT dialog window is as tall as the display but the window manager centres
-            // it inside the content area (below the status bar): it ends up shifted down and with
-            // zero insets, so the footer sat underneath the navigation bar. Pin it to the top of the
-            // display instead; safeDrawing then reports the real bar sizes for the card's padding.
+            // A MATCH_PARENT dialog window is as tall as the display, but the window manager lays it
+            // out inside the content area: it ends up shifted down by the status-bar height and
+            // reports every inset as zero. Pin it to the display origin and let it ignore the system
+            // bars; the card is padded with the activity's insets (LocalSafeInsets) instead, since
+            // this window cannot see them.
+            window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
             window?.setGravity(android.view.Gravity.TOP or android.view.Gravity.START)
             onDispose { }
         }
         val none = remember { MutableInteractionSource() }
         val shape = RoundedCornerShape(rem(1.5f))
         val bw = cssBorder()
-        // Diagnostic: do dialogs receive the system-bar insets? (the footer was landing under the nav bar)
-        val density = LocalDensity.current
-        android.util.Log.d(
-            "TwModal",
-            "insets top=${WindowInsets.safeDrawing.getTop(density)} bottom=${WindowInsets.safeDrawing.getBottom(density)} " +
-                "left=${WindowInsets.safeDrawing.getLeft(density, androidx.compose.ui.unit.LayoutDirection.Ltr)} " +
-                "right=${WindowInsets.safeDrawing.getRight(density, androidx.compose.ui.unit.LayoutDirection.Ltr)}",
-        )
+        val insets = LocalSafeInsets.current
         Box(
             Modifier.fillMaxSize().background(scrimColor)
                 .clickable(none, null, onClick = onDismiss),
         ) {
+            // The web's `fixed inset-0` is the viewport, i.e. the area between the system bars;
+            // the dialog window below does not know where those bars are (it reports no insets).
             BoxWithConstraints(
-                Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(rem(0.75f)),
+                Modifier.fillMaxSize()
+                    .padding(start = insets.start, end = insets.end, top = insets.top, bottom = insets.bottom),
             ) {
+                // `p-3` container with a `max-h-[92vh]` card: min(92 vh, height - 2 p-3).
+                val pad = rem(0.75f)
+                val cardHeight = min(maxHeight * maxHeightFraction, maxHeight - pad * 2)
                 val topPad = maxHeight * topFraction
-                Box(Modifier.fillMaxSize().padding(top = topPad), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxSize().padding(pad).padding(top = topPad), contentAlignment = Alignment.Center) {
                     Column(
                         Modifier.widthIn(max = rem(maxWidthRem)).fillMaxWidth()
-                            .then(if (fillHeight) Modifier.fillMaxHeight(maxHeightFraction) else Modifier)
+                            .then(if (fillHeight) Modifier.height(cardHeight) else Modifier)
                             .cssShadow(TwShadow.xxl(), rem(1.5f))
                             .clip(shape)
                             .background(dk(Tw.White, Tw.Slate900))
@@ -138,7 +138,6 @@ fun TwLabel(text: String, required: Boolean = false, modifier: Modifier = Modifi
         if (required) TwText(" *", 0.75f, 1f, Tw.Rose500, weight = FW.Semibold, maxLines = 1)
     }
 }
-
 /**
  * The app's text input: `px-3.5 py-2.5 rounded-xl border bg-white dark:bg-slate-900 text-xs
  * focus:ring-2 focus:ring-sky-500` (mono / dir=ltr variants for numbers).
@@ -205,7 +204,6 @@ fun TwTextField(
         },
     )
 }
-
 /**
  * A button of the original app: rounded-xl, horizontal/vertical padding, optional icon and shadow.
  * Hover/active classes are dropped (touch screen) but the base colours are kept.
@@ -245,7 +243,6 @@ fun TwButton(
         TwText(text, textRem, 1f, fg, weight = weight, maxLines = 1)
     }
 }
-
 /** Icon-only square button (`p-2 rounded-xl`). */
 @Composable
 fun TwIconButton(icon: Int, onClick: () -> Unit, tint: Color, modifier: Modifier = Modifier, padRem: Float = 0.5f, iconRem: Float = 1.25f) {
@@ -254,7 +251,6 @@ fun TwIconButton(icon: Int, onClick: () -> Unit, tint: Color, modifier: Modifier
             .padding(rem(padRem)),
     ) { LucideIcon(icon, iconRem, tint) }
 }
-
 /** The little round check bubble used by the bank picker grid. */
 @Composable
 fun TwCheckBubble(sizeRem: Float = 1.25f, iconRem: Float = 0.75f) {

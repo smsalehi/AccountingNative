@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,11 +22,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myaccounting.app.data.ThemeMode
 import com.myaccounting.app.ui.accounts.AccountsScreen
 import com.myaccounting.app.ui.components.AppToast
 import com.myaccounting.app.ui.components.NotificationDropdown
+import com.myaccounting.app.ui.theme.LocalSafeInsets
+import com.myaccounting.app.ui.theme.SafeInsets
 import com.myaccounting.app.ui.theme.Tw
 import com.myaccounting.app.ui.theme.TwText
 import com.myaccounting.app.ui.theme.dk
@@ -55,6 +61,17 @@ fun AppRoot(vm: MainViewModel, isDark: Boolean, themeMode: ThemeMode) {
         vm.consumeMessage()
     }
 
+    // Dialogs get their own window, which reports no insets at all; remember the real ones here.
+    val density = LocalDensity.current
+    val safeDrawing = WindowInsets.safeDrawing
+    val safeInsets = SafeInsets(
+        top = with(density) { safeDrawing.getTop(density).toDp() },
+        bottom = with(density) { safeDrawing.getBottom(density).toDp() },
+        start = with(density) { safeDrawing.getLeft(density, LayoutDirection.Ltr).toDp() },
+        end = with(density) { safeDrawing.getRight(density, LayoutDirection.Ltr).toDp() },
+    )
+
+    CompositionLocalProvider(LocalSafeInsets provides safeInsets) {
     Box(Modifier.fillMaxSize().background(dk(Tw.Slate50, Tw.Slate950))) {
         Column(Modifier.fillMaxSize()) {
             AppHeader(
@@ -100,5 +117,6 @@ fun AppRoot(vm: MainViewModel, isDark: Boolean, themeMode: ThemeMode) {
                 onClose = { showNotifs = false },
             )
         }
+    }
     }
 }
