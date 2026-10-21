@@ -51,6 +51,8 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -492,6 +494,7 @@ private fun AccountCard(
                     .background(dk(Tw.White, Tw.Slate800), gearShape)
                     .border(bw, dk(Tw.Slate200, Tw.Slate700), gearShape)
                     .clickable(remember { MutableInteractionSource() }, null) { onSettings(acc.uid) }
+                    .semantics { contentDescription = "تنظیمات حساب" }
                     .padding(rem(0.25f) + bw),
             ) { LucideIcon(R.drawable.ic_lucide_settings, 0.875f, Tw.Slate400) }
             Grip(acc.uid, false, 0.875f, Tw.Slate300, dnd, onDrop)

@@ -20,7 +20,8 @@ python3 tools/screenshot/make_sample_db.py sample_db.json
 adb shell am start -n $PKG/.MainActivity; sleep 5
 adb shell am force-stop $PKG
 adb push sample_db.json /data/local/tmp/sample_db.json
-adb shell run-as $PKG sh -c 'mkdir -p files && cp /data/local/tmp/sample_db.json files/smart_accounting_db_v1.json'
+adb shell run-as $PKG mkdir -p files
+adb shell run-as $PKG cp /data/local/tmp/sample_db.json files/smart_accounting_db_v1.json
 adb shell am start -n $PKG/.MainActivity
 sleep 8
 
