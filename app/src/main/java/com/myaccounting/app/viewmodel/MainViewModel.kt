@@ -15,6 +15,9 @@ import com.myaccounting.app.domain.Checks
 import com.myaccounting.app.domain.LoanSchedule
 import com.myaccounting.app.domain.Notifications
 import com.myaccounting.app.domain.Reorder
+import com.myaccounting.app.domain.Subject
+import com.myaccounting.app.domain.Transaction
+import com.myaccounting.app.domain.Transactions
 import com.myaccounting.app.domain.BackupCodec
 import com.myaccounting.app.domain.Currency
 import com.myaccounting.app.domain.CurrencyUnit
@@ -195,6 +198,41 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             db.accountGroups
         }
         viewModelScope.launch { persist(db.copy(accounts = accounts, accountGroups = groups)) }
+    }
+
+    /** App.tsx handleSaveTransaction: insert (newest first) or replace, and mirror the details rows. */
+    fun saveTransaction(tx: Transaction, isEditing: Boolean) {
+        val db = dbFlow.value ?: return
+        val transactions = if (isEditing) {
+            db.transactions.map { if (it.uid == tx.uid) tx else it }
+        } else {
+            listOf(tx) + db.transactions
+        }
+        val details = Transactions.syncDetails(db.transactionDetails, tx)
+        viewModelScope.launch {
+            persist(db.copy(transactions = transactions, transactionDetails = details))
+            emit(if (isEditing) "تراکنش با موفقیت ویرایش شد." else "تراکنش با موفقیت ثبت شد.", ToastKind.SUCCESS)
+        }
+    }
+
+    /** App.tsx handleDeleteTransaction: remove the transaction, its details rows. */
+    fun deleteTransaction(uid: String) {
+        val db = dbFlow.value ?: return
+        viewModelScope.launch {
+            persist(
+                db.copy(
+                    transactions = db.transactions.filter { it.uid != uid },
+                    transactionDetails = db.transactionDetails.filter { it.transactionUid != uid },
+                ),
+            )
+        }
+    }
+
+    /** NewSubjectModal.tsx onSave: a new subject is appended to the list. */
+    fun saveSubject(subject: Subject) {
+        val db = dbFlow.value ?: return
+        if (unitFlow.value == CurrencyUnit.USD) { warn(Currency.USD_READONLY_MESSAGE); return }
+        viewModelScope.launch { persist(db.copy(subjects = db.subjects + subject)) }
     }
 
     /** Deletes only the account (transactions keep their UIDs, exactly like the original). */

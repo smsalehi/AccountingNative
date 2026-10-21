@@ -54,7 +54,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.myaccounting.app.ui.theme.FW
 import com.myaccounting.app.ui.theme.LocalSafeInsets
-import com.myaccounting.app.ui.theme.LocalIsDark
 import com.myaccounting.app.ui.theme.Tw
 import com.myaccounting.app.ui.theme.TwText
 import com.myaccounting.app.ui.theme.Vazirmatn
@@ -76,6 +75,11 @@ fun TwModal(
     scrimColor: Color = Tw.Slate900.a(0.7f), // bg-slate-900/70
     topFraction: Float = 0f,        // pt-[20vh] of the calculator modal
     fillHeight: Boolean = true,     // max-h + flex column, or a content-sized card
+    shapeRem: Float = 1.5f,         // rounded-3xl, rounded-2xl, rounded-xl …
+    cardBg: Color = dk(Tw.White, Tw.Slate900),
+    cardBorder: Color? = dk(Tw.Slate200, Tw.Slate800),
+    cardShadow: List<ShadowLayer> = TwShadow.xxl(),
+    padRem: Float = 0.75f,          // the p-3 container
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Dialog(
@@ -90,7 +94,7 @@ fun TwModal(
             onDispose { }
         }
         val none = remember { MutableInteractionSource() }
-        val shape = RoundedCornerShape(rem(1.5f))
+        val shape = RoundedCornerShape(rem(shapeRem))
         val bw = cssBorder()
         val insets = LocalSafeInsets.current
         val density = LocalDensity.current
@@ -114,7 +118,7 @@ fun TwModal(
                     val topPad = (insets.top - windowTop).coerceAtLeast(0.dp)
                     val bottomPad = (maxHeight - screenHeight + insets.bottom + windowTop).coerceAtLeast(0.dp)
                     // `p-3` container with a `max-h-[92vh]` card: min(92 vh, height - 2 p-3).
-                    val pad = rem(0.75f)
+                    val pad = rem(padRem)
                     val viewport = (maxHeight - topPad - bottomPad).coerceAtLeast(1.dp)
                     val cardHeight = min(viewport * maxHeightFraction, viewport - pad * 2)
                     val topGap = viewport * topFraction
@@ -126,10 +130,10 @@ fun TwModal(
                         Column(
                             Modifier.widthIn(max = rem(maxWidthRem)).fillMaxWidth()
                                 .then(if (fillHeight) Modifier.height(cardHeight) else Modifier)
-                                .cssShadow(TwShadow.xxl(), rem(1.5f))
+                                .cssShadow(cardShadow, rem(shapeRem))
                                 .clip(shape)
-                                .background(dk(Tw.White, Tw.Slate900))
-                                .border(bw, dk(Tw.Slate200, Tw.Slate800), shape)
+                                .background(cardBg)
+                                .then(if (cardBorder != null) Modifier.border(bw, cardBorder, shape) else Modifier)
                                 .clickable(remember { MutableInteractionSource() }, null) { }
                                 .imePadding(),
                             content = content,
