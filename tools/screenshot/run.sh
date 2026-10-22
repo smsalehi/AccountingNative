@@ -126,6 +126,44 @@ tap_text "بستن همه" 540 495
 sleep 3
 shot accounts_collapsed
 
+# ---- transactions: the NewTransactionModal.tsx port, its pickers and the new-subject dialog ----------
+relaunch
+tap_text "انتقال" 748 495          # the «انتقال» pill of the accounts header
+sleep 3
+shot tx_transfer
+tap_text "هزینه" 180 640           # expense tab: one account row + the category field
+sleep 2
+shot tx_expense
+tap_text "برای انتخاب کلیک کنید..."
+sleep 2
+shot category_picker
+tap_text "سرفصل جدید"
+sleep 2
+shot new_subject
+relaunch
+
+# the single-mode account picker of the modal
+tap_text "انتقال" 748 495
+sleep 2
+tap_text "هزینه"
+sleep 1
+tap_text "انتخاب حساب بانکی"
+sleep 2
+shot account_picker
+relaunch
+
+# the person picker behind «گزینه‌های بیشتر»
+tap_text "انتقال" 748 495
+sleep 2
+tap_text "هزینه"
+sleep 1
+tap_text "گزینه‌های بیشتر"
+sleep 1
+tap_text "بدون شخص" 900 1600
+sleep 2
+shot person_picker
+relaunch
+
 # The same screen in light mode.
 adb shell cmd uimode night no
 sleep 4
