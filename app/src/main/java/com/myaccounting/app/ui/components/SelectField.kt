@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.myaccounting.app.R
 import com.myaccounting.app.ui.theme.FW
 import com.myaccounting.app.ui.theme.Tw
+import com.myaccounting.app.ui.theme.TwText
 import com.myaccounting.app.ui.theme.a
 import com.myaccounting.app.ui.theme.cssBorder
 import com.myaccounting.app.ui.theme.dk

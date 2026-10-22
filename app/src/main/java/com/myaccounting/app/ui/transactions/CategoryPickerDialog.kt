@@ -225,7 +225,7 @@ fun CategoryPickerDialog(
                                 Row(
                                     Modifier.fillMaxWidth()
                                         .background(
-                                            if (childSelected) dk(Tw.Sky100, Tw.Sky900.a(0.6f)) else Tw.Transparent,
+                                            if (childSelected) dk(Tw.Sky100, Tw.Sky900.a(0.6f)) else Color.Transparent,
                                             RoundedCornerShape(rem(0.5f)),
                                         )
                                         .clickable(remember { MutableInteractionSource() }, null) { onSelect(child.uid); onClose() }

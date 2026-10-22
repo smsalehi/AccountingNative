@@ -48,9 +48,9 @@ import com.myaccounting.app.ui.components.TwModal
 import com.myaccounting.app.ui.components.TwSelectField
 import com.myaccounting.app.ui.components.TwSelectorField
 import com.myaccounting.app.ui.components.TwTextField
-import com.myaccounting.app.ui.components.TwText
 import com.myaccounting.app.ui.theme.FW
 import com.myaccounting.app.ui.theme.Tw
+import com.myaccounting.app.ui.theme.TwText
 import com.myaccounting.app.ui.theme.a
 import com.myaccounting.app.ui.theme.dk
 import com.myaccounting.app.ui.theme.rem

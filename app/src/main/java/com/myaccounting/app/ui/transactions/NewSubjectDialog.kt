@@ -32,18 +32,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.myaccounting.app.R
 import com.myaccounting.app.domain.Subject
-import com.myaccounting.app.domain.newSubjectUid
+import com.myaccounting.app.domain.Transactions
 import com.myaccounting.app.ui.components.CategoryIcons
+import com.myaccounting.app.ui.components.HairLine
 import com.myaccounting.app.ui.components.LucideIcon
 import com.myaccounting.app.ui.components.PresetIcon
-import com.myaccounting.app.ui.components.TwModal
-import com.myaccounting.app.ui.components.TwText
-import com.myaccounting.app.ui.components.TwTextField
 import com.myaccounting.app.ui.components.TwIconButton
+import com.myaccounting.app.ui.components.TwModal
 import com.myaccounting.app.ui.components.TwSelectField
-import com.myaccounting.app.ui.components.HairLine
+import com.myaccounting.app.ui.components.TwTextField
 import com.myaccounting.app.ui.theme.FW
 import com.myaccounting.app.ui.theme.Tw
+import com.myaccounting.app.ui.theme.TwText
 import com.myaccounting.app.ui.theme.a
 import com.myaccounting.app.ui.theme.cssBorder
 import com.myaccounting.app.ui.theme.dk
@@ -78,7 +78,7 @@ fun NewSubjectDialog(
         }
         onSave(
             Subject(
-                uid = newSubjectUid(),
+                uid = Transactions.newSubjectUid(),
                 title = title.trim(),
                 isCost = isCost,
                 parentUid = parentUid.ifEmpty { null },
