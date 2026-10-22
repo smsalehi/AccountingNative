@@ -37,7 +37,11 @@ jobs:
       - name: Unit tests (parity with original app logic)
         run: gradle --no-daemon testDebugUnitTest
 
-      - name: Check signing secrets
+      # Signing is optional while the app is still being developed: without the four secrets the job
+      # still builds, tests and verifies everything and keeps an installable debug APK as an artifact.
+      # As soon as the secrets exist the exact same job publishes the signed release APK instead.
+      - name: Detect signing secrets
+        id: signing
         env:
           KEYSTORE_KEY: ${{ secrets.ANDROID_KEYSTORE_KEY }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -45,14 +49,20 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           if [ -z "$KEYSTORE_KEY" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
-            echo "::error::Signing secrets missing. Add ANDROID_KEYSTORE_KEY / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD under repo Settings > Secrets > Actions."
-            exit 1
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Signing secrets are not configured - the release APK stays unsigned and only artifacts are kept."
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build release APK (unsigned, arm64-v8a, minSdk 36)
         run: gradle --no-daemon assembleRelease
 
+      - name: Build debug APK (installable, arm64-v8a)
+        run: gradle --no-daemon assembleDebug
+
       - name: Sign APK with stable key
+        if: steps.signing.outputs.present == 'true'
         env:
           KEYSTORE_KEY: ${{ secrets.ANDROID_KEYSTORE_KEY }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -81,18 +91,32 @@ jobs:
 
       - name: Verify APK is arm64-only and Android 16+
         run: |
+          APK=myaccounting-native-arm64.apk
+          if [ ! -f "$APK" ]; then APK=app/build/outputs/apk/release/app-release-unsigned.apk; fi
+          echo "verifying $APK"
           BUILD_TOOLS="$ANDROID_SDK_ROOT/build-tools/$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -1)"
-          "$BUILD_TOOLS/aapt2" dump badging myaccounting-native-arm64.apk | grep -E "^(package|sdkVersion|targetSdkVersion|native-code)" || true
-          BADGING="$("$BUILD_TOOLS/aapt2" dump badging myaccounting-native-arm64.apk)"
+          "$BUILD_TOOLS/aapt2" dump badging "$APK" | grep -E "^(package|sdkVersion|targetSdkVersion|native-code)" || true
+          BADGING="$("$BUILD_TOOLS/aapt2" dump badging "$APK")"
           echo "$BADGING" | grep -q "^sdkVersion:'36'" || { echo "::error::minSdk is not 36 (Android 16)"; exit 1; }
           NATIVE="$(echo "$BADGING" | grep "^native-code:" || true)"
           if [ -n "$NATIVE" ] && [ "$NATIVE" != "native-code: 'arm64-v8a'" ]; then
             echo "::error::APK contains ABIs other than arm64-v8a: $NATIVE"
             exit 1
           fi
-          unzip -l myaccounting-native-arm64.apk | grep "lib/" | grep -v "lib/arm64-v8a/" && { echo "::error::non-arm64 libraries found"; exit 1; } || true
+          unzip -l "$APK" | grep "lib/" | grep -v "lib/arm64-v8a/" && { echo "::error::non-arm64 libraries found"; exit 1; } || true
+
+      - name: Keep unsigned APKs as artifacts (no secrets configured)
+        if: steps.signing.outputs.present != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: accounting-unsigned-${{ github.run_number }}
+          path: |
+            app/build/outputs/apk/release/app-release-unsigned.apk
+            app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
 
       - name: Publish APK to rolling Release
+        if: steps.signing.outputs.present == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
