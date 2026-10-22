@@ -107,6 +107,7 @@ fun AccountsScreen(
     collapsed: Set<String>,
     vm: MainViewModel,
     onOpenNewTransaction: (type: Int, accountUid: String?) -> Unit = { _, _ -> },
+    onSelectAccount: (uid: String) -> Unit = { vm.notPorted("نمایش تراکنش‌های حساب") },
 ) {
     if (!state.loaded) return
     val db = state.shownDb
@@ -178,7 +179,7 @@ fun AccountsScreen(
                     onToggle = { vm.setCollapsedGroups(if (isCollapsed) collapsed - group.uid else collapsed + group.uid) },
                     dnd = dnd, onDrop = ::dropped,
                     bankTitles = bankTitles, balances = state.balances, ownChecks = state.ownChecksByAccount,
-                    onSelectAccount = { vm.notPorted("نمایش تراکنش‌های حساب") },
+                    onSelectAccount = { uid -> onSelectAccount(uid) },
                     onNewTransaction = { uid -> onOpenNewTransaction(1, uid) },
                     onAccountSettings = { uid -> if (unit == CurrencyUnit.USD) vm.warn(Currency.USD_READONLY_MESSAGE) else settingsAccount = db.accounts.firstOrNull { it.uid == uid } },
                 )
@@ -196,7 +197,7 @@ fun AccountsScreen(
             onClose = { settingsAccount = null },
             onSave = { vm.saveAccount(it); settingsAccount = null },
             onDelete = { vm.deleteAccount(it) },
-            onViewTransactions = { vm.notPorted("نمایش تراکنش‌های حساب") },
+            onViewTransactions = { settingsAccount = null; onSelectAccount(acc.uid) },
             onQuickTransaction = { type -> onOpenNewTransaction(type, acc.uid); settingsAccount = null },
         )
     }

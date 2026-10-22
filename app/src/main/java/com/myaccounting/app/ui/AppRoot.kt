@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -33,6 +34,8 @@ import com.myaccounting.app.ui.accounts.AccountsScreen
 import com.myaccounting.app.ui.components.AppToast
 import com.myaccounting.app.ui.components.NotificationDropdown
 import com.myaccounting.app.ui.transactions.NewTransactionDialog
+import com.myaccounting.app.ui.transactions.TransactionsScreen
+import com.myaccounting.app.ui.transactions.TxUi
 import com.myaccounting.app.ui.theme.LocalSafeInsets
 import com.myaccounting.app.ui.theme.SafeInsets
 import com.myaccounting.app.ui.theme.Tw
@@ -60,6 +63,20 @@ fun AppRoot(vm: MainViewModel, isDark: Boolean, themeMode: ThemeMode) {
     val collapsed by vm.collapsedGroups.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(Tab.ACCOUNTS) }
     var showNotifs by rememberSaveable { mutableStateOf(false) }
+    // App.tsx: selectedAccountFilter / selectedDeptFilter / selectedProjectFilter / txFilterRequestId.
+    var selectedAccountFilter by remember { mutableStateOf<String?>(null) }
+    var selectedDeptFilter by remember { mutableStateOf<String?>(null) }
+    var selectedProjectFilter by remember { mutableStateOf<String?>(null) }
+    var txFilterRequestId by remember { mutableIntStateOf(0) }
+    // The web keeps every view mounted, so the transactions filters survive tab switches.
+    val txUi = remember { TxUi() }
+    LaunchedEffect(selectedAccountFilter) { txUi.applyAccountFilter(selectedAccountFilter) }
+    LaunchedEffect(selectedDeptFilter) { txUi.applyDeptFilter(selectedDeptFilter) }
+    LaunchedEffect(selectedProjectFilter) { txUi.applyProjectFilter(selectedProjectFilter) }
+    LaunchedEffect(txFilterRequestId) {
+        if (txFilterRequestId == 0) return@LaunchedEffect
+        txUi.resetForRequest(selectedAccountFilter, selectedDeptFilter, selectedProjectFilter)
+    }
     // App.tsx modalTxType / modalAccountUid / … : a transaction dialog request, null when closed.
     var txRequest by remember { mutableStateOf<TxRequest?>(null) }
     fun openNewTransaction(type: Int = 1, accountUid: String? = null, deptUid: String? = null, projectUid: String? = null, personUid: String? = null) {
@@ -103,7 +120,24 @@ fun AppRoot(vm: MainViewModel, isDark: Boolean, themeMode: ThemeMode) {
             // The page scrolls above the fixed bottom bar (web: main + the 3.5rem spacer in App.tsx).
             Box(Modifier.weight(1f).padding(bottom = bottomNavHeight())) {
                 when (tab) {
-                    Tab.ACCOUNTS -> AccountsScreen(state, collapsed, vm, ::openNewTransaction)
+                    Tab.ACCOUNTS -> AccountsScreen(
+                        state, collapsed, vm, ::openNewTransaction,
+                        onSelectAccount = { uid ->
+                            selectedAccountFilter = uid
+                            selectedDeptFilter = null
+                            selectedProjectFilter = null
+                            txFilterRequestId++
+                            tab = Tab.TRANSACTIONS
+                        },
+                    )
+                    Tab.TRANSACTIONS -> TransactionsScreen(
+                        state = state,
+                        vm = vm,
+                        ui = txUi,
+                        onEditTransaction = { tx ->
+                            txRequest = TxRequest(tx.transactionType, tx.sourceAccountUid, tx.deptUid, tx.projectUid, tx.personUid, tx)
+                        },
+                    )
                     Tab.SETTINGS -> SettingsScreen(vm, state, themeMode)
                     else -> Box(Modifier.fillMaxSize().padding(rem(1f)), contentAlignment = Alignment.Center) {
                         TwText("بخش «${tab.label}» هنوز در نسخه نیتیو منتقل نشده است.", 0.875f, 1.25f, dk(Tw.Slate500, Tw.Slate400))
