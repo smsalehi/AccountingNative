@@ -68,19 +68,21 @@ fun AmountInput(
 
     Column(modifier) {
         if (label != null) TwLabel(label)
-        Box(
-            Modifier.fillMaxWidth().heightIn(min = rem(2.5f))
-                .background(dk(Tw.White, Tw.Slate900), shape)
-                .border(cssBorder(), dk(Tw.Slate200, Tw.Slate700), shape)
-                .clickable(remember { MutableInteractionSource() }, null) { calcOpen = true }
-                .padding(vertical = rem(0.625f)),
-        ) {
-            val shown = when {
-                displayValue > 0 -> JalaliDate.toPersianDigits(Currency.formatNumberWithCommas(displayValue))
-                allowZero && value == 0.0 -> JalaliDate.toPersianDigits("0")
-                else -> ""
-            }
-            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        // The web input is `dir="ltr"` with the currency at `absolute left-2` and `pl-24 pr-4 text-left`:
+        // the whole box must resolve its alignment in LTR, otherwise Compose puts the unit on the right.
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            Box(
+                Modifier.fillMaxWidth().heightIn(min = rem(2.5f))
+                    .background(dk(Tw.White, Tw.Slate900), shape)
+                    .border(cssBorder(), dk(Tw.Slate200, Tw.Slate700), shape)
+                    .clickable(remember { MutableInteractionSource() }, null) { calcOpen = true }
+                    .padding(vertical = rem(0.625f)),
+            ) {
+                val shown = when {
+                    displayValue > 0 -> JalaliDate.toPersianDigits(Currency.formatNumberWithCommas(displayValue))
+                    allowZero && value == 0.0 -> JalaliDate.toPersianDigits("0")
+                    else -> ""
+                }
                 Row(
                     Modifier.align(Alignment.CenterStart).padding(start = rem(0.5f)),
                     horizontalArrangement = Arrangement.spacedBy(rem(0.375f)),

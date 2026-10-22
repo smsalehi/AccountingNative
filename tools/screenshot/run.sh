@@ -131,7 +131,13 @@ relaunch
 tap_text "انتقال" 748 495          # the «انتقال» pill of the accounts header
 sleep 3
 shot tx_transfer
-tap_text "هزینه" 180 640           # expense tab: one account row + the category field
+relaunch
+
+# The expense tab by coordinate: «هزینه» is also a substring of the modal's subtitle, so tap_text
+# would hit the subtitle instead of the tab (bounds from tx_transfer.png).
+tap_text "انتقال" 748 495
+sleep 2
+adb shell input tap 870 520
 sleep 2
 shot tx_expense
 tap_text "برای انتخاب کلیک کنید..."
@@ -142,10 +148,20 @@ sleep 2
 shot new_subject
 relaunch
 
+# The Persian calendar behind the date field (its value always starts with the Jalali year ۱۴۰…).
+tap_text "انتقال" 748 495
+sleep 2
+adb shell input tap 870 520
+sleep 1
+tap_text "۱۴۰"
+sleep 2
+shot calendar
+relaunch
+
 # the single-mode account picker of the modal
 tap_text "انتقال" 748 495
 sleep 2
-tap_text "هزینه"
+adb shell input tap 870 520
 sleep 1
 tap_text "انتخاب حساب بانکی"
 sleep 2
@@ -155,7 +171,7 @@ relaunch
 # the person picker behind «گزینه‌های بیشتر»
 tap_text "انتقال" 748 495
 sleep 2
-tap_text "هزینه"
+adb shell input tap 870 520
 sleep 1
 tap_text "گزینه‌های بیشتر"
 sleep 1

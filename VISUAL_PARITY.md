@@ -54,4 +54,34 @@ Modal dialogs get **zero window insets** from the platform (Compose dialog windo
 9. The blurred gradient blobs inside the virtual account card are radial gradients rather than a 24 px blur (the card is clipped the same way).
 10. Modals are centred the same way but `sm:` breakpoints are not applied (the phone width is below 640 dp anyway).
 11. The notification bell popover (`NotificationDropdown.tsx`) is ported: list, urgent rows with the pay/dismiss buttons, empty state and the answers/pay action. It is placed at `statusBar + 5rem` (`top-20`), matching the WebView's non-edge-to-edge viewport; if OpenCode's activity ever goes edge-to-edge the popover must move up by the status-bar height. The browser-notification permission prompt is intentionally not shown: Android WebView has no `window.Notification`, so the original never shows it on the phone either. Long «مبلغ قسط … • موعد …» meta lines clip instead of wrapping the way the web's flex spans do.
-12. Not ported yet: other tabs, group settings, transaction entry/transfer (the buttons show the style-matched warning toast), the transactions screen and the Settings screen details.
+12. Not ported yet: other tabs, group settings, the transactions screen (list/filters/export), the deals/checks screens and the Settings screen details.
+
+## Transactions: entry modal and its pickers (step 1 of the transactions phase)
+`NewTransactionModal.tsx` is ported as `ui/transactions/NewTransactionDialog.kt`, opened from the «انتقال» pill, the
+«ثبت تراکنش» button of the card menus, the two quick actions of the account settings modal and the FAB (all with the
+web's initial parameters: `type`, `accountUid`; `deptUid`/`projectUid`/`personUid` are wired through the same request
+object even though no ported screen passes them yet). Faithful details worth recording:
+
+* The six-field duplicate check (`round`ed toman value, subject, source account, Persian date, person, loan) asks
+  «تراکنش مشابهی ثبت شده است…» before saving, then the negative-source-balance check runs (expense and transfer only),
+  exactly like `handleSaveTransaction`. In USD mode saving is **not** blocked (`blockInUsd` only guards accounts,
+  persons and loans), so the modal is not gated either.
+* Editing keeps the sign of the stored value (`originalSign`) and never asks about duplicates; «ذخیره تغییرات» replaces
+  the transaction and its `TransactionDetails` legs in place (newest rows first).
+* «ثبت» saves and keeps the modal open with the amount and description cleared; «ثبت و بستن» closes. The web shows a
+  second, modal-local `Toast.tsx` bubble for the «ثبت» path on top of the app toast; the native build keeps only the
+  app toast (one message instead of two identical ones, no trailing period difference worth a second layer).
+* `<select>` elements (project, loan, parent category) have no native equivalent, so they are a styled field with the
+  same paddings/colours that opens a Material `DropdownMenu`; the chevron sits at the leading (left in RTL) edge like
+  Chrome's RTL select arrow.
+* `autoFocus` on the new-subject title is preserved (IME opens on top of the dialog).
+* The pickers' close button is `p-2` (the web's `p-1.5`); the icon box is 1.25rem in both. The 0.125rem change only
+  affects the (invisible) pressed background.
+* `AccountPickerModal` / `PersonPickerModal` multi mode is implemented (checkbox, «همه» per group, «انتخاب همه» /
+  «پاک کردن» / «تأیید», plain (non-Persian) group counts as in the original) but no ported screen opens it yet.
+* Category picker quirks are reproduced: the root row expands when it has children and selects itself otherwise; each
+  root row carries a «انتخاب کل» link; searching searches **all** subjects (expense and income) while the tree is
+  filtered by the current direction.
+* The Persian calendar/clock dialogs reproduce the original's date maths, including its weekday offset (`getDay()`
+  against `ش…ج`) and the PM hour-hand index; they are ported behaviour-for-behaviour rather than "fixed".
+
