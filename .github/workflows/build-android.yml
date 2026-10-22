@@ -55,9 +55,6 @@ jobs:
             echo "present=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build release APK (unsigned, arm64-v8a, minSdk 36)
-        run: gradle --no-daemon assembleRelease
-
       - name: Build debug APK (installable, arm64-v8a)
         run: gradle --no-daemon assembleDebug
 
@@ -117,14 +114,11 @@ jobs:
           fi
           unzip -l "$APK" | grep "lib/" | grep -v "lib/arm64-v8a/" && { echo "::error::non-arm64 libraries found"; exit 1; } || true
 
-      - name: Keep unsigned APKs as artifacts (no secrets configured)
-        if: steps.signing.outputs.present != 'true'
+      - name: Keep debug APK as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: accounting-unsigned-${{ github.run_number }}
-          path: |
-            app/build/outputs/apk/release/app-release-unsigned.apk
-            app/build/outputs/apk/debug/app-debug.apk
+          name: accounting-debug-${{ github.run_number }}
+          path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 7
 
       - name: Publish APK to rolling Release
