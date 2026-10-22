@@ -22,7 +22,7 @@ class TransactionsTest {
 
         val subj = Transactions.newSubjectUid(1_700_000_000_000L)
         assertTrue(subj, subj.startsWith("subj_"))
-        assertEquals(3 + 5 + "1700000000000".toLong().toString(36).length, subj.length)
+        assertEquals(5 + "1700000000000".toLong().toString(36).length + 5, subj.length)
 
         assertNotEquals(Transactions.newUid(), Transactions.newUid())
     }
@@ -92,8 +92,11 @@ class TransactionsTest {
         assertFalse("dept", dup(dept = "dept_1"))
         // Editing the very same transaction must not collide with itself.
         assertFalse("self", dup(editing = "tx_1"))
-        // null and '' are the same field value.
-        assertTrue(dup(subject = null, person = null, dept = null))
+        // null and '' are the same field value …
+        val noSubject = db.copy(transactions = listOf(existing.copy(subjectUid = null, personUid = null, deptUid = null)))
+        assertTrue(Transactions.isDuplicate(noSubject, null, 250_000.0, "", "acc_a", "1404/01/02", "", ""))
+        // … but a missing subject is not the same as a different one.
+        assertFalse("null vs subj_1", dup(subject = null))
     }
 
     @Test
