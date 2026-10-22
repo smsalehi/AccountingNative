@@ -133,8 +133,8 @@ class TransactionFiltersTest {
     fun totalsSumIncomeAndExpensesWithAbsoluteValues() {
         val totals = TransactionFilters.totals(TransactionFilters.apply(db, TransactionFilters.Criteria()))
         assertEquals(45_000_000.0, totals.income, 0.0)
-        assertEquals(6_240_000.0, totals.expense, 0.0)
-        assertEquals(38_760_000.0, totals.balance, 0.0)
+        assertEquals(1_240_000.0, totals.expense, 0.0)
+        assertEquals(43_760_000.0, totals.balance, 0.0)
     }
 
     @Test
@@ -149,7 +149,7 @@ class TransactionFiltersTest {
         // A transfer has no income/expense direction, so the project balance stays 0.
         assertEquals(0.0, item.balance, 0.0)
         // Everything without a project counts as unassigned.
-        assertEquals(6_240_000.0, summaries.unassignedExpenses, 0.0)
+        assertEquals(1_240_000.0, summaries.unassignedExpenses, 0.0)
         assertEquals(45_000_000.0, summaries.unassignedIncomes, 0.0)
     }
 

@@ -131,7 +131,8 @@ object TransactionFilters {
                 val descMatch = t.desc?.lowercase()?.contains(term) == true
                 val dateMatch = t.persianDate.contains(term)
                 val subjectMatch = t.subjectUid?.let { subjects[it]?.title?.lowercase()?.contains(term) } == true
-                val accountMatch = t.sourceAccountUid?.let { accounts[it]?.title?.lowercase()?.contains(term) } == true
+                val accountMatch = (t.sourceAccountUid?.let { accounts[it]?.title?.lowercase()?.contains(term) } == true) ||
+                    (t.destinationAccountUid?.let { accounts[it]?.title?.lowercase()?.contains(term) } == true)
                 val personMatch = t.personUid?.let { persons[it]?.fullName?.lowercase()?.contains(term) } == true
                 return@filter descMatch || dateMatch || subjectMatch || accountMatch || personMatch
             }
