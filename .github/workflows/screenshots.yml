@@ -68,6 +68,13 @@ jobs:
               echo "screenshots/accounts_$name.png missing" >> screenshots/report.txt
             fi
           done
+          # The transactions tab is compared against the web app's own capture (docs/reference/web).
+          if [ -f "screenshots/transactions.png" ] && [ -f "docs/reference/web/transactions.png" ]; then
+            python3 tools/screenshot/diff.py "screenshots/transactions.png" "docs/reference/web/transactions.png" "screenshots/transactions" | tee -a screenshots/report.txt || true
+            python3 tools/screenshot/crops.py "screenshots/transactions.png" "docs/reference/web/transactions.png" screenshots/crops "transactions" || true
+          else
+            echo "screenshots/transactions.png missing" >> screenshots/report.txt
+          fi
 
       - name: Shrink the artifact (JPEG shots, filtered log)
         if: always()

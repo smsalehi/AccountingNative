@@ -126,6 +126,23 @@ tap_text "بستن همه" 540 495
 sleep 3
 shot accounts_collapsed
 
+# ---- transactions: the TransactionsView.tsx port (list, day groups, filters) ----------
+relaunch
+tap_text "تراکنش‌ها" 745 2180        # the second tab of the bottom bar
+sleep 3
+shot transactions
+# scroll down to the grouped list (the day headers and the rows)
+adb shell input swipe 540 1900 540 700 300
+sleep 1
+adb shell input swipe 540 1900 540 700 300
+sleep 2
+shot transactions_list
+# expand a row (the oldest day: «بنزین»)
+tap_text "بنزین" 540 900
+sleep 2
+shot transactions_expanded
+relaunch
+
 # ---- transactions: the NewTransactionModal.tsx port, its pickers and the new-subject dialog ----------
 relaunch
 tap_text "انتقال" 748 495          # the «انتقال» pill of the accounts header

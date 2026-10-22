@@ -95,9 +95,20 @@ jobs:
           if [ ! -f "$APK" ]; then APK=app/build/outputs/apk/release/app-release-unsigned.apk; fi
           echo "verifying $APK"
           BUILD_TOOLS="$ANDROID_SDK_ROOT/build-tools/$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -1)"
-          "$BUILD_TOOLS/aapt2" dump badging "$APK" | grep -E "^(package|sdkVersion|targetSdkVersion|native-code)" || true
           BADGING="$("$BUILD_TOOLS/aapt2" dump badging "$APK")"
-          echo "$BADGING" | grep -q "^sdkVersion:'36'" || { echo "::error::minSdk is not 36 (Android 16)"; exit 1; }
+          echo "$BADGING" | grep -E "^(package|sdkVersion|targetSdkVersion|native-code)" || true
+          # minSdk: aapt2 omits the "sdkVersion:" line for some APKs, so fall back to the
+          # merged manifest (android:minSdkVersion="36" -> 0x24).
+          MIN="$(echo "$BADGING" | sed -n "s/^sdkVersion:'\([0-9][0-9]*\)'.*/\1/p" | head -1)"
+          if [ -z "$MIN" ]; then
+            "$BUILD_TOOLS/aapt2" dump xmltree --file AndroidManifest.xml "$APK" | grep -A4 "uses-sdk" || true
+            MIN_HEX="$("$BUILD_TOOLS/aapt2" dump xmltree --file AndroidManifest.xml "$APK" | grep -m1 "minSdkVersion" | sed -n "s/.*=0x\([0-9a-fA-F]*\).*/\1/p")"
+            if [ -n "$MIN_HEX" ]; then MIN=$((16#$MIN_HEX)); fi
+          fi
+          if [ "$MIN" != "36" ]; then
+            echo "::error::minSdk is not 36 (Android 16) - got '$MIN'"
+            exit 1
+          fi
           NATIVE="$(echo "$BADGING" | grep "^native-code:" || true)"
           if [ -n "$NATIVE" ] && [ "$NATIVE" != "native-code: 'arm64-v8a'" ]; then
             echo "::error::APK contains ABIs other than arm64-v8a: $NATIVE"
