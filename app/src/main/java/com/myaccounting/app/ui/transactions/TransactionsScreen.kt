@@ -190,7 +190,7 @@ fun TransactionsScreen(
                         )
                     }
                 }
-                Spacer(Modifier.height(rem(1f)))
+                item(key = "gap-$gi") { Spacer(Modifier.height(rem(1f))) }
             }
         }
     }
