@@ -102,8 +102,9 @@ jobs:
           MIN="$(echo "$BADGING" | sed -n "s/^sdkVersion:'\([0-9][0-9]*\)'.*/\1/p" | head -1)"
           if [ -z "$MIN" ]; then
             "$BUILD_TOOLS/aapt2" dump xmltree --file AndroidManifest.xml "$APK" | grep -A4 "uses-sdk" || true
-            MIN_HEX="$("$BUILD_TOOLS/aapt2" dump xmltree --file AndroidManifest.xml "$APK" | grep -m1 "minSdkVersion" | sed -n "s/.*=0x\([0-9a-fA-F]*\).*/\1/p")"
-            if [ -n "$MIN_HEX" ]; then MIN=$((16#$MIN_HEX)); fi
+            # the attribute value is either decimal (36) or hex (0x24) - bash arithmetic reads both
+            MIN_RAW="$("$BUILD_TOOLS/aapt2" dump xmltree --file AndroidManifest.xml "$APK" | grep -m1 "minSdkVersion" | sed -n "s/.*minSdkVersion[^=]*=\(.*\)/\1/p")"
+            if [ -n "$MIN_RAW" ]; then MIN=$((MIN_RAW)); fi
           fi
           if [ "$MIN" != "36" ]; then
             echo "::error::minSdk is not 36 (Android 16) - got '$MIN'"
