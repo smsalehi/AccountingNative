@@ -1,4 +1,5 @@
 package com.myaccounting.app.ui.checks
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
