@@ -1,4 +1,5 @@
 package com.myaccounting.app.ui.depts
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.*
@@ -25,7 +26,7 @@ fun DeptsScreen(s: com.myaccounting.app.viewmodel.MainViewModel.UiState, v: com.
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(rem(0.75f))) {
                     SummaryCardSimple("کل بدهی", fa(db.depts.sumOf { it.value.toInt() }), Tw.Rose600, Tw.Rose50, R.drawable.ic_lucide_layers)
-                    SummaryCardSimple("مانده پرداخت", "۴,۸۰۰,۰۰۰ م.ت", Tw.Sky600, Tw.Sky50, R.drawable.ic_lucide_circle_dollar_sign)
+                    SummaryCardSimple("مانده پرداخت", "۴,۸۰۰,۰۰۰ م.ت", Tw.Sky600, Tw.Sky50, R.drawable.ic_lucide_circle)
                 }
             }
         }
