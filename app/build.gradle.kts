@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.myaccounting.native"
+    namespace = "com.myaccounting.app"
     compileSdk = 36
 
     defaultConfig {
