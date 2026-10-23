@@ -1,4 +1,4 @@
-import androidx.compose.ui.Modifier
+package com.myaccounting.app.ui.checks
 import com.myaccounting.app.ui.theme.rem
 import com.myaccounting.app.ui.theme.cssBorder
 import com.myaccounting.app.ui.theme.dk

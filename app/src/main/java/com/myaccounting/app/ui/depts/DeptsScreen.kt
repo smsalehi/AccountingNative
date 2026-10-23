@@ -1,4 +1,4 @@
-import androidx.compose.ui.Modifier
+package com.myaccounting.app.ui.depts
 import androidx.compose.ui.graphics.Color
 import com.myaccounting.app.ui.theme.rem
 import com.myaccounting.app.ui.theme.cssBorder

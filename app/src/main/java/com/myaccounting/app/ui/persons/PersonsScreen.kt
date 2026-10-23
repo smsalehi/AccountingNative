@@ -1,4 +1,4 @@
-import androidx.compose.ui.draw.rotate
+package com.myaccounting.app.ui.persons
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
