@@ -1,4 +1,6 @@
 package com.myaccounting.app.ui.settings
+import com.myaccounting.app.R
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
