@@ -144,7 +144,6 @@ fun AppRoot(vm: MainViewModel, isDark: Boolean, themeMode: ThemeMode) {
                     )
                     Tab.PERSONS -> PersonsScreen(state, vm)
                     Tab.DEPTS -> DeptsScreen(state, vm)
-                    Tab.CHECKS -> ChecksScreen(state, vm)
                     Tab.SETTINGS -> SettingsScreen(vm, state, themeMode)
                     else -> Box(Modifier.fillMaxSize().padding(rem(1f)), contentAlignment = Alignment.Center) {
                         TwText("بخش «${tab.label}» هنوز در نسخه نیتیو منتقل نشده است.", 0.875f, 1.25f, dk(Tw.Slate500, Tw.Slate400))
