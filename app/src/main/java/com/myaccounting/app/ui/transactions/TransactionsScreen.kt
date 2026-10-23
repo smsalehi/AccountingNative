@@ -227,12 +227,12 @@ fun TransactionsScreen(
 
 @Composable
 private fun TxHeader(onExportExcel: () -> Unit, onExportPdf: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(rem(1f))) {
+    Column(verticalArrangement = Arrangement.spacedBy(rem(0.5f))) {
         TwText(
-            "ریز تراکنش‌ها", 1.25f, 1.75f, dk(Tw.Slate800, Tw.Slate100),
+            "ریز تراکنش‌ها", 1f, 1.5f, dk(Tw.Slate800, Tw.Slate100),
             weight = FW.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(rem(0.5f))) {
+        Row(horizontalArrangement = Arrangement.spacedBy(rem(0.375f))) {
             ExportButton("خروجی اکسل", R.drawable.ic_lucide_file_spreadsheet, Tw.Emerald600, onExportExcel)
             ExportButton("خروجی PDF", R.drawable.ic_lucide_printer, Tw.Sky600, onExportPdf)
         }
@@ -241,12 +241,12 @@ private fun TxHeader(onExportExcel: () -> Unit, onExportPdf: () -> Unit) {
 
 @Composable
 private fun ExportButton(label: String, icon: Int, tint: Color, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(rem(0.75f))
+    val shape = RoundedCornerShape(rem(1f))
     Row(
         Modifier.background(dk(Tw.Slate100, Tw.Slate800), shape)
             .border(cssBorder(), dk(Tw.Slate200, Tw.Slate700), shape)
             .clickable(remember { MutableInteractionSource() }, null, onClick = onClick)
-            .padding(horizontal = rem(0.75f), vertical = rem(0.5f)),
+            .padding(horizontal = rem(0.75f), vertical = rem(0.25f)),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(rem(0.375f)),
     ) {
