@@ -54,11 +54,6 @@ jobs:
           disable-animations: true
           script: ./tools/screenshot/run.sh
 
-      - name: Build web reference (TypeScript app)
-        working-directory: ../Accounting
-        run: |
-          npm install --prefer-offline 2>&1 | tail -5 || true
-          npm run build 2>&1 | tail -5 || true
       - name: Diff against the original app's screenshots
         if: always()
         run: |
