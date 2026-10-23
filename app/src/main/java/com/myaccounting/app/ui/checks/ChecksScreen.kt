@@ -1,4 +1,9 @@
 package com.myaccounting.app.ui.checks
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
+import com.myaccounting.app.ui.components.LucideIcon
+import com.myaccounting.app.R
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
