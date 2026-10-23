@@ -1,3 +1,8 @@
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import com.myaccounting.app.ui.theme.rem
+import com.myaccounting.app.ui.theme.cssBorder
+import com.myaccounting.app.ui.theme.dk
 package com.myaccounting.app.ui.depts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
