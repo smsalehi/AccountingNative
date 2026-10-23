@@ -1,7 +1,7 @@
 package com.myaccounting.app.ui.checks
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.L LazyColumn
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.*
 import com.myaccounting.app.ui.theme.*
 @Composable
