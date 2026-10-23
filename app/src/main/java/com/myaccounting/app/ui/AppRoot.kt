@@ -35,6 +35,7 @@ import com.myaccounting.app.ui.components.AppToast
 import com.myaccounting.app.ui.components.NotificationDropdown
 import com.myaccounting.app.ui.transactions.NewTransactionDialog
 import com.myaccounting.app.ui.transactions.TransactionsScreen
+import com.myaccounting.app.ui.persons.PersonsScreen
 import com.myaccounting.app.ui.transactions.TxUi
 import com.myaccounting.app.ui.theme.LocalSafeInsets
 import com.myaccounting.app.ui.theme.SafeInsets
@@ -138,6 +139,7 @@ fun AppRoot(vm: MainViewModel, isDark: Boolean, themeMode: ThemeMode) {
                             txRequest = TxRequest(tx.transactionType, tx.sourceAccountUid, tx.deptUid, tx.projectUid, tx.personUid, tx)
                         },
                     )
+                    Tab.PERSONS -> PersonsScreen(state, vm)
                     Tab.SETTINGS -> SettingsScreen(vm, state, themeMode)
                     else -> Box(Modifier.fillMaxSize().padding(rem(1f)), contentAlignment = Alignment.Center) {
                         TwText("بخش «${tab.label}» هنوز در نسخه نیتیو منتقل نشده است.", 0.875f, 1.25f, dk(Tw.Slate500, Tw.Slate400))
