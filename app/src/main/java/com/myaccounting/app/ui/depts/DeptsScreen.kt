@@ -1,5 +1,5 @@
-import androidx.compose.ui.Modifier
 package com.myaccounting.app.ui.depts
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
