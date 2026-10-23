@@ -1,3 +1,4 @@
+import androidx.compose.ui.Modifier
 package com.myaccounting.app.ui.persons
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*

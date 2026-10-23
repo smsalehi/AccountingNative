@@ -16,7 +16,7 @@ fun SettingsScreen(vm: com.myaccounting.app.viewmodel.MainViewModel, state: com.
         item(key = "h") { TwText("تنظیمات", 1.25f, 1.75f, dk(Tw.Slate800, Tw.Slate100), weight = FW.Bold) }
         item(key = "theme") { SettingsRow("تم", "تاریک / روشن", R.drawable.ic_lucide_moon, Tw.Sky600) }
         item(key = "font") { SettingsRow("مقیاس فونت", "۱۰۰٪ (مرجع)", R.drawable.ic_lucide_type, Tw.Amber600) }
-        item(key = "backup") { SettingsRow("پشتیبان", "دریافت / بازیابی", R.drawable.ic_lucide_database, Tw.Emerald600) }
+        item(key = "backup") { SettingsRow("پشتیبان", "دریافت / بازیابی", R.drawable.ic_lucide_folder, Tw.Emerald600) }
     }
 }
 @Composable private fun SettingsRow(title: String, desc: String, icon: Int, tint: Color) {
