@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.myaccounting.app"
+    namespace = "com.myaccounting.native"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.myaccounting.app"
+        applicationId = "com.myaccounting.native"
         // Android 16 (API 36) and above only
         minSdk = 36
         targetSdk = 36
