@@ -38,6 +38,7 @@ import com.myaccounting.app.ui.transactions.TransactionsScreen
 import com.myaccounting.app.ui.persons.PersonsScreen
 import com.myaccounting.app.ui.depts.DeptsScreen
 import com.myaccounting.app.ui.checks.ChecksScreen
+import com.myaccounting.app.ui.settings.SettingsScreen
 import com.myaccounting.app.ui.transactions.TxUi
 import com.myaccounting.app.ui.theme.LocalSafeInsets
 import com.myaccounting.app.ui.theme.SafeInsets
