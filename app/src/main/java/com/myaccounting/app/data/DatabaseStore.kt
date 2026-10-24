@@ -37,7 +37,7 @@ class DatabaseStore(private val context: Context) {
     }
 
     private val db: SQLiteDatabase by lazy {
-        helper.writableDatabase.apply { query("PRAGMA synchronous=NORMAL").use { it.moveToFirst() } }
+        helper.writableDatabase.apply { rawQuery("PRAGMA synchronous=NORMAL", null).use { it.moveToFirst() } }
     }
 
     fun load(): LoadResult {
@@ -99,7 +99,7 @@ class DatabaseStore(private val context: Context) {
 
     /** The gzipped SQLite file: the native backup format. */
     fun exportGzip(): ByteArray {
-        db.query("PRAGMA wal_checkpoint(FULL)").use { it.moveToFirst() }
+        db.rawQuery("PRAGMA wal_checkpoint(FULL)", null).use { it.moveToFirst() }
         val raw = sqliteFile.readBytes()
         val bos = java.io.ByteArrayOutputStream(raw.size / 3 + 1024)
         GZIPOutputStream(bos).use { it.write(raw) }
