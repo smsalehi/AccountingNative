@@ -4,9 +4,10 @@
 > **all five tabs are ported** (Accounts, Transactions, Persons, Loans+Checks, Settings) with real
 > database reads/writes, the new-transaction modal, the person / check / loan forms, the check
 > deposit and loan-history modals, check reminders as exact system alarms, Excel/PDF export into a
-> persisted SAF folder and the in-app log center. The GitHub Actions build (unit parity tests →
-> signed arm64 APK → rolling `latest` release) is green. Still missing: auto-backup / folder
-> backup / Google Drive, and a couple of small settings affordances (exports-folder management UI).
+> persisted SAF folder, the in-app log center and folder auto-backup (google-daily + on-close with
+> the 20% size guard and restore). The GitHub Actions build (unit parity tests → signed arm64 APK →
+> rolling `latest` release) is green. Remaining: the exports-folder management UI in settings
+> (the export flow itself works — it asks for a folder on first use).
 
 ## What is verified (and how)
 - `app/src/main/java/com/myaccounting/app/domain/` is pure Kotlin (no Android imports), golden-parity
@@ -64,5 +65,6 @@ after reboot; reminder ids are the same FNV-1a hash of `checkUid:days` as the we
 - Null rows in `Accounts` are dropped (the original turns them into phantom accounts).
 - Fractional Jalali year/month/day in due dates are rejected instead of being half-processed.
 - The in-app log keeps the last 500 events in memory (the web persisted them to localStorage).
-- Auto-backup on exit, folder backup and Google Drive backup are **not ported yet**.
+- Google Drive backups use the same SAF flow (a Drive folder picked once); there is no
+  account-picker / Drive-app integration beyond what the SAF provider offers — same as the original.
 - See `SOURCE_AUDIT.md`, `FEATURE_TRACEABILITY.md`, `VISUAL_PARITY.md` for per-feature details.

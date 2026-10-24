@@ -37,7 +37,7 @@ Legend: **V** = ported and parity-checked against the original TypeScript output
 | Check reminders (`checkNotifications.ts`) | 3d/1d/day-of-deadline at chosen hour, FNV ids, reschedule-on-change | `Notifications.kt`, `data/CheckReminders.kt`, `CheckReminderDialog.kt` | **F** (AlarmManager instead of Capacitor LocalNotifications) |
 | Logs (`logger.ts`, `LogsView.tsx`) | stats, level/category filters, search, JSON/TXT export, clear | `data/AppLog.kt`, `ui/settings/LogsTab.kt` | **F** (in-memory, web persisted to localStorage) |
 | Categories & projects management (`CategoriesView`, projects) | define/hide/rename, project colors | `SettingsScreen.kt` tabs, `ProjectColors.kt` | **F** |
-| Folder backup UI (`FolderBackup.tsx`, `ExportFolderSettings.tsx`) | connect/disconnect folder, auto-backup on exit | — | **—** |
-| Google Drive backup (`googleDrive.ts`) | | — | **—** |
-| Auto-backup (`autoBackup.ts`) | on exit / periodic | — | **—** |
+| Folder backup (`FolderBackup.tsx`, `folderBackup.ts`) | two sections (google = daily gzip auto-backup into a Drive/SAF folder, local = raw overwrite on close), 20% size guard, manual timestamped backups, restore list | `data/FolderBackupStore.kt`, `ui/settings/FolderBackupTab.kt` | **F** (SAF tree picker instead of the Capacitor FolderPicker plugin) |
+| Google Drive backup (`googleDrive.ts`) | Drive folders via SAF authority detection + offline skip, last-backup-date guard | `FolderBackupStore.isDriveFolderUri`, `MainViewModel.runGoogleDailyAutoBackup` | **F** |
+| Auto-backup (`autoBackup.ts`) | google daily + local on every close, empty-DB skip, parallel sections | `MainViewModel.runAutoBackups` (startup `LaunchedEffect` + `MainActivity.onStop`) | **F** |
 | PWA install / online status / ErrorBoundary | web-only | n/a | — |
