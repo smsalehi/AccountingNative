@@ -16,12 +16,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +46,7 @@ import com.myaccounting.app.domain.Person
 import com.myaccounting.app.domain.Subject
 import com.myaccounting.app.domain.Transaction
 import com.myaccounting.app.domain.TransactionFilters
+import com.myaccounting.app.domain.TransactionFilters.DatePreset
 import com.myaccounting.app.ui.components.BankLogo
 import com.myaccounting.app.ui.components.CategoryIcon
 import com.myaccounting.app.ui.components.CategoryIconSize
@@ -70,6 +76,10 @@ private class TxRowData(
     val bankNameSrc: String?,
     val bankNameDest: String?,
 )
+
+/** Default display window on the transactions tab (days) and its hard ceiling (10 years). */
+private const val DEFAULT_WINDOW_DAYS = 7
+private const val MAX_WINDOW_DAYS = 3650
 
 /**
  * `TransactionsView.tsx` ported to Compose: the page header, the collapsible project balance
@@ -108,10 +118,30 @@ fun TransactionsScreen(
         customStart = ui.customStart,
         customEnd = ui.customEnd,
     )
-    val filtered = remember(db.transactions, criteria) { TransactionFilters.apply(db, criteria) }
+    val filteredAll = remember(db.transactions, criteria) { TransactionFilters.apply(db, criteria) }
+    // پیش‌فرض فقط هفته اخیر نمایش داده می‌شود؛ اسکرول به پایین ماه‌به‌ماه قدیمی‌ترها را لود می‌کند.
+    // وقتی کاربر خودش بازه تاریخی انتخاب کرده باشد، پنجره اعمال نمی‌شود.
+    val explicitRange = ui.preset != DatePreset.ALL || ui.customStart.isNotEmpty() || ui.customEnd.isNotEmpty()
+    var windowDays by rememberSaveable { mutableIntStateOf(DEFAULT_WINDOW_DAYS) }
+    val filtered = remember(filteredAll, windowDays, explicitRange) {
+        if (explicitRange || windowDays >= MAX_WINDOW_DAYS) filteredAll
+        else {
+            val cutoff = java.util.Calendar.getInstance().apply {
+                timeInMillis = System.currentTimeMillis()
+                set(java.util.Calendar.HOUR_OF_DAY, 0)
+                set(java.util.Calendar.MINUTE, 0)
+                set(java.util.Calendar.SECOND, 0)
+                set(java.util.Calendar.MILLISECOND, 0)
+                add(java.util.Calendar.DAY_OF_MONTH, -(windowDays - 1))
+            }.timeInMillis
+            filteredAll.filter { it.dateTime >= cutoff }
+        }
+    }
     val groups = remember(filtered) { TransactionFilters.groupByDay(filtered) }
-    val totals = remember(filtered) { TransactionFilters.totals(filtered) }
+    // آمار خلاصه همیشه روی همه نتایج فیلترشده است (مثل وب)، نه فقط پنجره نمایشی
+    val totals = remember(filteredAll) { TransactionFilters.totals(filteredAll) }
     val summaries = remember(db.projects, db.transactions) { TransactionFilters.projectSummaries(db) }
+    val hasOlder = !explicitRange && windowDays < MAX_WINDOW_DAYS && filtered.size < filteredAll.size
 
     val rowsByUid = remember(filtered, accountsById, subjectsById, projectsById, personsById, deptsById, bankTitlesById) {
         filtered.associate { t ->
@@ -133,7 +163,19 @@ fun TransactionsScreen(
 
     var deleteUid by remember { mutableStateOf<String?>(null) }
 
+    // اسکرول به نزدیکی انتهای لیست → ۳۰ روز قدیمی‌تر لود می‌شود
+    val listState = rememberLazyListState()
+    LaunchedEffect(listState, filtered.size, hasOlder) {
+        if (!hasOlder) return@LaunchedEffect
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .collect { last ->
+                val total = listState.layoutInfo.totalItemsCount
+                if (last != null && total > 15 && last >= total - 3) windowDays = (windowDays + 30).coerceAtMost(MAX_WINDOW_DAYS)
+            }
+    }
+
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             start = rem(1f), end = rem(1f), top = rem(1f), bottom = rem(4f),
@@ -141,8 +183,8 @@ fun TransactionsScreen(
     ) {
         item(key = "header") {
             TxHeader(
-                onExportExcel = { onExportExcel(filtered) },
-                onExportPdf = { onExportPdf(filtered) },
+                onExportExcel = { onExportExcel(filteredAll) },
+                onExportPdf = { onExportPdf(filteredAll) },
             )
             Spacer(Modifier.height(rem(1.25f)))
         }
@@ -169,7 +211,7 @@ fun TransactionsScreen(
             item(key = "count") {
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     TwText(
-                        "نمایش ${fa(filtered.size)} تراکنش",
+                        if (hasOlder) "نمایش ${fa(filtered.size)} از ${fa(filteredAll.size)} تراکنش" else "نمایش ${fa(filteredAll.size)} تراکنش",
                         0.6875f, 1f, Tw.Slate400, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                 }
@@ -193,6 +235,23 @@ fun TransactionsScreen(
                     }
                 }
                 item(key = "gap-$gi") { Spacer(Modifier.height(rem(1f))) }
+            }
+            if (hasOlder) {
+                item(key = "load-more") {
+                    Box(
+                        Modifier.fillMaxWidth()
+                            .clickable(remember { MutableInteractionSource() }, null) {
+                                windowDays = (windowDays + 30).coerceAtMost(MAX_WINDOW_DAYS)
+                            }
+                            .padding(vertical = rem(0.75f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        TwText(
+                            "نمایش تراکنش‌های قدیمی‌تر…",
+                            0.75f, 1f, dk(Tw.Sky600, Tw.Sky400), weight = FW.Bold, maxLines = 1,
+                        )
+                    }
+                }
             }
         }
     }

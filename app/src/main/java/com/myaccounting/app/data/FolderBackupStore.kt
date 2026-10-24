@@ -28,9 +28,9 @@ object FolderBackupStore {
     )
 
     val GOOGLE = Cfg(Kind.GOOGLE, "بکاپ‌گیری Google Drive", "پوشه Google Drive — بکاپ خودکار روزانه با نام ثابت",
-        "google-backup-auto-accounting.gz", "google", "bk_google")
+        "google-backup-auto-accounting.sqlite.gz", "google", "bk_google")
     val LOCAL = Cfg(Kind.LOCAL, "بکاپ حافظه داخلی", "پوشه حافظه داخلی — بکاپ خودکار هنگام بستن برنامه با نام ثابت",
-        "local-backup-auto-accounting.json", "local", "bk_local")
+        "local-backup-auto-accounting.sqlite.gz", "local", "bk_local")
 
     /** A new automatic backup replaces the previous one only when it is NOT more than 20% smaller. */
     const val AUTO_GUARD_RATIO = 0.8
@@ -41,12 +41,12 @@ object FolderBackupStore {
     fun isDriveFolderUri(uri: String): Boolean =
         Regex("^content://([^/]+)").find(uri.trim())?.groupValues?.get(1) == DRIVE_AUTHORITY
 
-    /** folderBackup.ts manualFileName: `prefix_yyyy-MM-dd_HH-mm-ss.json.gz` (Gregorian, local time). */
+    /** folderBackup.ts manualFileName, native format: `prefix_yyyy-MM-dd_HH-mm-ss.sqlite.gz`. */
     fun manualFileName(prefix: String, at: java.util.Calendar = java.util.Calendar.getInstance()): String {
         fun p(n: Int) = n.toString().padStart(2, '0')
         val date = "${at.get(java.util.Calendar.YEAR)}-${p(at.get(java.util.Calendar.MONTH) + 1)}-${p(at.get(java.util.Calendar.DAY_OF_MONTH))}"
         val time = "${p(at.get(java.util.Calendar.HOUR_OF_DAY))}-${p(at.get(java.util.Calendar.MINUTE))}-${p(at.get(java.util.Calendar.SECOND))}"
-        return "${prefix}_${date}_$time.json.gz"
+        return "${prefix}_${date}_$time.sqlite.gz"
     }
 
     /** folderBackup.ts decideReplace: replace when no previous file or not >20% smaller. */
@@ -61,20 +61,9 @@ object FolderBackupStore {
             db.transactionDetails.isNotEmpty() || db.invoices.isNotEmpty() || db.depts.isNotEmpty() ||
             db.checks.isNotEmpty() || db.tags.isNotEmpty() || db.configs.isNotEmpty()
 
-    /** Serializes + gzips; returns the payload and its raw gzip size (the guard compares these). */
-    fun gzipPayload(db: AccountingDatabase): Pair<ByteArray, Int> {
-        val bytes = BackupCodec.gzip(DatabaseCodec.toJson(db))
-        return bytes to bytes.size
-    }
-
     /** Writes gzip bytes into the folder; throws with a readable message instead of failing silently. */
     fun writeGzip(context: Context, folder: Uri, fileName: String, gzipBytes: ByteArray): Boolean {
         return writeToDoc(context, folder, fileName, "application/gzip") { out -> out.write(gzipBytes) }
-    }
-
-    fun writeText(context: Context, folder: Uri, fileName: String, text: String): Boolean {
-        val bytes = text.toByteArray(Charsets.UTF_8)
-        return writeToDoc(context, folder, fileName, "application/json") { out -> out.write(bytes) }
     }
 
     /** True when the app still holds a persisted write grant for the tree uri. */
@@ -122,7 +111,8 @@ object FolderBackupStore {
             )?.use { c ->
                 while (c.moveToNext()) {
                     val name = c.getString(1) ?: continue
-                    if (!name.endsWith(".gz") && name != LOCAL.autoFile) continue
+                    // همه بکاپ‌های نیتیو gzip هستند (sqlite.gz جدید، json.gz قدیمی) + فایل ثابت محلی
+                    if (!name.endsWith(".gz") && !name.endsWith(".json") && name != LOCAL.autoFile) continue
                     val size = if (c.isNull(2)) -1L else c.getLong(2)
                     val modified = if (c.isNull(3)) 0L else c.getLong(3)
                     out.add(BackupFileEntry(name, size, modified, DocumentsContract.buildDocumentUriUsingTree(folder, c.getString(0))))
@@ -134,7 +124,15 @@ object FolderBackupStore {
         }
     }
 
-    /** Reads any backup file (.gz gzip / plain json) and returns the JSON text. */
+    /** Reads any backup file and returns the raw bytes (the caller decodes by extension). */
+    fun readBackupBytes(context: Context, folder: Uri, fileName: String): ByteArray? = try {
+        val docUri = findChild(context, folder, fileName) ?: return null
+        context.contentResolver.openInputStream(docUri)?.use { it.readBytes() }
+    } catch (_: Exception) {
+        null
+    }
+
+    /** Reads a legacy text backup (.gz gzip of json / plain json / base64) and returns the JSON text. */
     fun readBackupText(context: Context, folder: Uri, fileName: String): String? = try {
         val docUri = findChild(context, folder, fileName) ?: return null
         val bytes = context.contentResolver.openInputStream(docUri)?.use { it.readBytes() } ?: return null

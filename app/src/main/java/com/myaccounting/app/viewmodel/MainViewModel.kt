@@ -149,7 +149,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun persist(db: AccountingDatabase) {
-        saveLock.withLock { withContext(Dispatchers.IO) { store.save(db) } }
+        saveLock.withLock { withContext(Dispatchers.IO) { store.save(dbFlow.value, db) } }
         dbFlow.value = db
     }
 
@@ -358,8 +358,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
 
     /**
-     * «بکاپ دستی»: a timestamped gzip file, always written. [uriOverride] carries the folder that
-     * was just picked (the persisted state may not have landed yet).
+     * «بکاپ دستی»: a timestamped gzipped-SQLite file, always written. [uriOverride] carries the
+     * folder that was just picked (the persisted state may not have landed yet).
      */
     fun manualFolderBackup(kind: String, uriOverride: String? = null) {
         val db = dbFlow.value ?: return
@@ -369,12 +369,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val st = (if (kind == "google") backupGoogle else backupLocal).value
                 val uriStr = uriOverride ?: st.uri
                 if (uriStr.isNullOrEmpty()) { warn("ابتدا پوشه بکاپ را متصل کنید."); return@launch }
-                val (bytes, size) = FolderBackupStore.gzipPayload(db)
+                val bytes = store.exportGzip()
                 val name = FolderBackupStore.manualFileName(cfg.manualPrefix)
                 FolderBackupStore.writeGzip(getApplication(), Uri.parse(uriStr), name, bytes)
                 prefs.stampBackupSync(kind, stampLabel())
                 success("بکاپ دستی ذخیره شد: $name")
-                AppLog.success(AppLog.Category.BACKUP, "بکاپ دستی «${cfg.title}» ذخیره شد", "$name ($size bytes)")
+                AppLog.success(AppLog.Category.BACKUP, "بکاپ دستی «${cfg.title}» ذخیره شد", "$name (${bytes.size} bytes)")
             } catch (e: Exception) {
                 warn("بکاپ دستی ناموفق بود: ${e.message ?: e.javaClass.simpleName}")
                 AppLog.error(AppLog.Category.BACKUP, "بکاپ دستی ناموفق بود", e.message)
@@ -382,22 +382,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** Restores a backup file from the connected folder (same pipeline as importBackup). */
+    /** Restores a backup file from the connected folder: sqlite.gz (native) or legacy json. */
     fun restoreFromFolder(kind: String, fileName: String) {
         val st = (if (kind == "google") backupGoogle else backupLocal).value
         if (!st.connected) { warn("ابتدا پوشه بکاپ را متصل کنید."); return }
         viewModelScope.launch {
             try {
-                val text = withContext(Dispatchers.IO) {
-                    FolderBackupStore.readBackupText(getApplication(), Uri.parse(st.uri), fileName)
-                } ?: throw IllegalStateException("خواندن فایل ناموفق بود")
-                val parsed = Json.parse(text)
-                val v = DatabaseCodec.validate(parsed)
-                if (!v.ok) { emit(v.reason ?: "ساختار فایل بکاپ معتبر نیست.", ToastKind.ERROR); return@launch }
-                val result = withContext(Dispatchers.Default) { DatabaseCodec.normalize(parsed) }
-                persist(result.db)
-                emit("بازیابی انجام شد — ${v.stats}", ToastKind.SUCCESS)
-                AppLog.success(AppLog.Category.IMPORT, "بازیابی از «$fileName»", "${v.stats}")
+                if (fileName.endsWith(".sqlite.gz")) {
+                    val bytes = withContext(Dispatchers.IO) {
+                        FolderBackupStore.readBackupBytes(getApplication(), Uri.parse(st.uri), fileName)
+                    } ?: throw IllegalStateException("خواندن فایل ناموفق بود")
+                    val restored = withContext(Dispatchers.IO) { store.importGzip(bytes) }
+                    persist(restored)
+                    emit("بازیابی انجام شد.", ToastKind.SUCCESS)
+                    AppLog.success(AppLog.Category.IMPORT, "بازیابی از «$fileName»")
+                } else {
+                    val text = withContext(Dispatchers.IO) {
+                        FolderBackupStore.readBackupText(getApplication(), Uri.parse(st.uri), fileName)
+                    } ?: throw IllegalStateException("خواندن فایل ناموفق بود")
+                    val parsed = Json.parse(text)
+                    val v = DatabaseCodec.validate(parsed)
+                    if (!v.ok) { emit(v.reason ?: "ساختار فایل بکاپ معتبر نیست.", ToastKind.ERROR); return@launch }
+                    val result = withContext(Dispatchers.Default) { DatabaseCodec.normalize(parsed) }
+                    persist(result.db)
+                    emit("بازیابی انجام شد — ${v.stats}", ToastKind.SUCCESS)
+                    AppLog.success(AppLog.Category.IMPORT, "بازیابی از «$fileName»", "${v.stats}")
+                }
             } catch (e: Exception) {
                 emit("بازیابی ناموفق بود: ${e.message ?: e.javaClass.simpleName}", ToastKind.ERROR)
                 AppLog.error(AppLog.Category.IMPORT, "بازیابی از پوشه بکاپ ناموفق بود", e.message)
@@ -434,10 +444,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 AppLog.warning(AppLog.Category.BACKUP, "بکاپ خودکار گوگل رد شد: آفلاین.")
                 return
             }
-            val (bytes, size) = FolderBackupStore.gzipPayload(db)
+            val bytes = store.exportGzip()
             val prev = FolderBackupStore.fileSize(getApplication(), Uri.parse(st.uri), cfg.autoFile)
-            if (!FolderBackupStore.decideReplace(prev, size.toLong())) {
-                val msg = "بکاپ خودکار امروز انجام نشد: حجم بکاپ جدید (${prev} → $size بایت) بیش از ۲۰٪ کمتر است؛ فایل قبلی حفظ شد."
+            if (!FolderBackupStore.decideReplace(prev, bytes.size.toLong())) {
+                val msg = "بکاپ خودکار امروز انجام نشد: حجم بکاپ جدید (${prev} → ${bytes.size} بایت) بیش از ۲۰٪ کمتر است؛ فایل قبلی حفظ شد."
                 prefs.setBackupBlocked("google", msg)
                 AppLog.warning(AppLog.Category.BACKUP, msg)
                 return
@@ -460,16 +470,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         try {
             val st = backupLocal.value
             if (!st.connected) return
-            val json = DatabaseCodec.toJson(db)
-            val size = json.toByteArray(Charsets.UTF_8).size.toLong()
+            val bytes = store.exportGzip()
             val prev = FolderBackupStore.fileSize(getApplication(), Uri.parse(st.uri), cfg.autoFile)
-            if (!FolderBackupStore.decideReplace(prev, size)) {
+            if (!FolderBackupStore.decideReplace(prev, bytes.size.toLong())) {
                 val msg = "بکاپ خودکار انجام نشد: حجم بکاپ جدید بیش از ۲۰٪ کمتر است؛ فایل قبلی حفظ شد."
                 prefs.setBackupBlocked("local", msg)
                 AppLog.warning(AppLog.Category.BACKUP, msg)
                 return
             }
-            if (FolderBackupStore.writeText(getApplication(), Uri.parse(st.uri), cfg.autoFile, json)) {
+            if (FolderBackupStore.writeGzip(getApplication(), Uri.parse(st.uri), cfg.autoFile, bytes)) {
                 prefs.stampBackupSync("local", stampLabel())
                 prefs.setBackupBlocked("local", "")
                 AppLog.success(AppLog.Category.BACKUP, "بکاپ خودکار پوشه داخلی ذخیره شد.")
