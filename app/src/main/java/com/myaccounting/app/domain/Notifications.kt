@@ -56,4 +56,82 @@ object Notifications {
         nowMs: Long = System.currentTimeMillis(),
         zone: ZoneId = ZoneId.systemDefault(),
     ): Int = items(db, dismissed, nowMs, zone).size
+
+    // --- یادآوری چک‌ها (checkNotifications.ts) ---------------------------------------------------
+
+    data class CheckReminderPrefs(val enabled: Boolean = true, val hour: Int = DEFAULT_HOUR) {
+        companion object { const val DEFAULT_HOUR = 9 }
+    }
+
+    data class PlannedReminder(val id: Int, val title: String, val body: String, val atMs: Long, val checkUid: String)
+
+    private val OFFSETS_DAYS = intArrayOf(3, 1, 0)
+
+    /** شناسه عددی ۳۲بیتیِ پایدار از یک کلید متنی (FNV-1a، همان web). */
+    fun reminderNotificationId(key: String): Int {
+        var h = 2166136261
+        for (ch in key) {
+            h = h xor ch.code
+            h *= 16777619
+        }
+        return ((h.toLong() and 0xFFFFFFFFL).toInt() % 2000000000) + 1
+    }
+
+    private fun whenLabel(daysBefore: Int): String = when (daysBefore) {
+        0 -> "امروز"
+        1 -> "فردا"
+        else -> "${JalaliDate.toPersianDigits(daysBefore.toString())} روز دیگر"
+    }
+
+    /**
+     * برنامه یادآوری‌ها (تابع خالص): برای هر چک در انتظار ۳ روز قبل، ۱ روز قبل و روز مهلت،
+     * ساعت مشخص‌شده. مهلت: own = سررسید، person = مهلت واریز (تا وقتی مانده واریز > ۰).
+     */
+    fun planCheckNotifications(
+        checks: List<Check>,
+        transactions: List<Transaction>,
+        persons: List<Person>,
+        prefs: CheckReminderPrefs,
+        unit: CurrencyUnit,
+        nowMs: Long = System.currentTimeMillis(),
+    ): List<PlannedReminder> {
+        if (!prefs.enabled) return emptyList()
+        val txIndex = Checks.buildTxByUidIndex(transactions)
+        val personIndex = persons.associate { it.uid to it.fullName }
+        val out = ArrayList<PlannedReminder>()
+        for (c in checks) {
+            if (c.status != CheckStatus.PENDING) continue
+            val remaining = Checks.checkRemaining(c, transactions, txIndex)
+            if (remaining <= 0) continue
+            val deadline = Checks.checkDeadlineMs(c)
+            if (deadline <= 0L) continue
+            val label = if (c.kind == CheckKind.PERSON) {
+                "چک " + (c.drawerPersonUid?.let(personIndex::get)?.ifEmpty { null } ?: "شخص")
+            } else {
+                "چک" +
+                    (c.checkNumber?.takeIf { it.isNotEmpty() }?.let { " شماره " + JalaliDate.toPersianDigits(it) } ?: "") +
+                    (c.payeePersonUid?.let(personIndex::get)?.takeIf { it.isNotEmpty() }?.let { " ($it)" } ?: "")
+            }
+            val amountText = Currency.formatCurrency(remaining, unit)
+            for (days in OFFSETS_DAYS) {
+                val cal = java.util.Calendar.getInstance()
+                cal.timeInMillis = deadline
+                cal.add(java.util.Calendar.DAY_OF_MONTH, -days)
+                cal.set(java.util.Calendar.HOUR_OF_DAY, prefs.hour)
+                cal.set(java.util.Calendar.MINUTE, 0)
+                cal.set(java.util.Calendar.SECOND, 0)
+                cal.set(java.util.Calendar.MILLISECOND, 0)
+                val at = cal.timeInMillis
+                if (at <= nowMs + 5000) continue
+                val title = if (c.kind == CheckKind.PERSON) "مهلت واریز چک" else "سررسید چک"
+                val body = if (c.kind == CheckKind.PERSON) {
+                    "$label: ${whenLabel(days)} آخرین مهلت واریز است — مانده $amountText"
+                } else {
+                    "$label: ${whenLabel(days)} سررسید است — $amountText"
+                }
+                out.add(PlannedReminder(reminderNotificationId("${c.uid}:$days"), title, body, at, c.uid))
+            }
+        }
+        return out
+    }
 }

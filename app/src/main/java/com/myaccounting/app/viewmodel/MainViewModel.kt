@@ -173,6 +173,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun exportsFolderUri(): String = prefs.exportsFolder.first()
     fun saveExportsFolder(uri: String) { viewModelScope.launch { prefs.setExportsFolder(uri) } }
 
+    /** Check reminder prefs (checkNotifications.ts localStorage key). */
+    val checkReminderPrefs: StateFlow<Notifications.CheckReminderPrefs> = combine(
+        prefs.checkReminderEnabled,
+        prefs.checkReminderHour,
+    ) { e, h -> Notifications.CheckReminderPrefs(e, h) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, Notifications.CheckReminderPrefs())
+    fun saveCheckReminderPrefs(value: Notifications.CheckReminderPrefs) {
+        viewModelScope.launch { prefs.setCheckReminderPrefs(value.enabled, value.hour) }
+    }
+
     /** Drag & drop: the group [fromUid] takes the position of [toUid] (reorderArray semantics). */
     fun reorderGroups(fromUid: String, toUid: String) {
         val db = dbFlow.value ?: return

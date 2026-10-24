@@ -1,5 +1,9 @@
 package com.myaccounting.app.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -24,11 +28,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.myaccounting.app.data.CheckReminders
 import com.myaccounting.app.data.ThemeMode
 import com.myaccounting.app.domain.CurrencyUnit
+import com.myaccounting.app.domain.Notifications
 import com.myaccounting.app.domain.Transaction
 import com.myaccounting.app.ui.accounts.AccountsScreen
 import com.myaccounting.app.ui.components.AppToast
@@ -78,6 +86,24 @@ fun AppRoot(vm: MainViewModel, isDark: Boolean, themeMode: ThemeMode) {
     val exportDeliverer = rememberExportDeliverer(vm)
     // Exports always see the raw (toman) rows, even while the USD display view is on.
     val rawTxsByUid = remember(state.db.transactions) { state.db.transactions.associateBy { it.uid } }
+
+    // App.tsx on-mount permission prompt (LocalNotifications.requestPermissions).
+    val context = LocalContext.current
+    val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(Unit) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+    // App.tsx: any change in checks/transactions/persons/prefs → cancel + reschedule (800 ms debounce).
+    val checkPrefs by vm.checkReminderPrefs.collectAsStateWithLifecycle()
+    LaunchedEffect(state.loaded, state.db.checks, state.db.transactions, state.db.persons, checkPrefs, state.effectiveUnit) {
+        if (!state.loaded) return@LaunchedEffect
+        delay(800)
+        val notifUnit = if (state.effectiveUnit == CurrencyUnit.RIAL) CurrencyUnit.RIAL else CurrencyUnit.TOMAN
+        val planned = Notifications.planCheckNotifications(state.db.checks, state.db.transactions, state.db.persons, checkPrefs, notifUnit)
+        CheckReminders.reschedule(context, planned)
+    }
     LaunchedEffect(selectedAccountFilter) { txUi.applyAccountFilter(selectedAccountFilter) }
     LaunchedEffect(selectedDeptFilter) { txUi.applyDeptFilter(selectedDeptFilter) }
     LaunchedEffect(selectedProjectFilter) { txUi.applyProjectFilter(selectedProjectFilter) }
@@ -196,7 +222,7 @@ fun AppRoot(vm: MainViewModel, isDark: Boolean, themeMode: ThemeMode) {
                 items = state.notifications,
                 unit = state.effectiveUnit,
                 onDismissItem = { vm.dismissNotification(it) },
-                onPayInstallment = { showNotifs = false; vm.notPorted("پرداخت قسط") },
+                onPayInstallment = { showNotifs = false; openNewTransaction(deptUid = it) },
                 onClose = { showNotifs = false },
             )
         }

@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.myaccounting.app.R
 import com.myaccounting.app.domain.Check
 import com.myaccounting.app.domain.CheckKind
@@ -71,6 +72,9 @@ fun ChecksScreen(
     // CheckFormModal isOpen + editing (null = add mode).
     var checkDialogOpen by remember { mutableStateOf(false) }
     var editingCheck by remember { mutableStateOf<Check?>(null) }
+    // ReminderSettingsModal.
+    var reminderDialogOpen by remember { mutableStateOf(false) }
+    val reminderPrefs = vm.checkReminderPrefs.collectAsStateWithLifecycle().value
 
     val nowMs = remember { System.currentTimeMillis() }
     val txIndex = remember(db.transactions) { Checks.buildTxByUidIndex(db.transactions) }
@@ -118,10 +122,15 @@ fun ChecksScreen(
                         Modifier.size(rem(2.25f))
                             .background(dk(Tw.Slate100, Tw.Slate800), RoundedCornerShape(rem(0.75f)))
                             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                                vm.notPorted("تنظیمات یادآوری چک‌ها")
+                                reminderDialogOpen = true
                             },
                         contentAlignment = Alignment.Center,
-                    ) { LucideIcon(R.drawable.ic_lucide_bell, 1f, dk(Tw.Slate600, Tw.Slate300)) }
+                    ) {
+                        LucideIcon(
+                            if (reminderPrefs.enabled) R.drawable.ic_lucide_bell else R.drawable.ic_lucide_bell_off,
+                            1f, dk(Tw.Slate600, Tw.Slate300),
+                        )
+                    }
                     Row(
                         Modifier.background(Tw.Amber600, RoundedCornerShape(rem(0.75f)))
                             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
@@ -279,6 +288,14 @@ fun ChecksScreen(
             onSubmit = { vm.saveCheck(it, editingCheck != null) },
             onAddSubject = { vm.saveSubject(it) },
             onError = { vm.warn(it) },
+        )
+    }
+
+    if (reminderDialogOpen) {
+        CheckReminderDialog(
+            prefs = reminderPrefs,
+            onChange = { vm.saveCheckReminderPrefs(it) },
+            onClose = { reminderDialogOpen = false },
         )
     }
 }

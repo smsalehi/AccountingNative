@@ -27,6 +27,8 @@ class AppPrefs(private val context: Context) {
     private val notifDateKey = stringPreferencesKey("notif_dismissed_date")
     private val notifIdsKey = stringSetPreferencesKey("notif_dismissed_ids")
     private val exportsFolderKey = stringPreferencesKey("exports_folder_uri")
+    private val reminderEnabledKey = booleanPreferencesKey("check_reminders_enabled")
+    private val reminderHourKey = intPreferencesKey("check_reminders_hour")
 
     val theme: Flow<ThemeMode> = context.dataStore.data.map { ThemeMode.fromKey(it[themeKey]) }
     val unit: Flow<CurrencyUnit> = context.dataStore.data.map { p -> CurrencyUnit.values().firstOrNull { it.json == p[unitKey] } ?: CurrencyUnit.TOMAN }
@@ -39,6 +41,11 @@ class AppPrefs(private val context: Context) {
     }
     /** The persisted SAF tree uri of the exports folder (exportDelivery.ts EXPORTS_PLUGIN_KEY). */
     val exportsFolder: Flow<String> = context.dataStore.data.map { it[exportsFolderKey] ?: "" }
+    /** Check reminder prefs (checkNotifications.ts PREFS_KEY; defaults enabled=true, hour=9). */
+    val checkReminderEnabled: Flow<Boolean> = context.dataStore.data.map { it[reminderEnabledKey] ?: true }
+    val checkReminderHour: Flow<Int> = context.dataStore.data.map {
+        (it[reminderHourKey] ?: com.myaccounting.app.domain.Notifications.CheckReminderPrefs.DEFAULT_HOUR).coerceIn(0, 23)
+    }
 
     suspend fun setTheme(mode: ThemeMode) { context.dataStore.edit { it[themeKey] = mode.key } }
     suspend fun setUnit(unit: CurrencyUnit) { context.dataStore.edit { it[unitKey] = unit.json } }
@@ -48,6 +55,9 @@ class AppPrefs(private val context: Context) {
         context.dataStore.edit { it[notifDateKey] = today(); it[notifIdsKey] = ids }
     }
     suspend fun setExportsFolder(uri: String) { context.dataStore.edit { it[exportsFolderKey] = uri } }
+    suspend fun setCheckReminderPrefs(enabled: Boolean, hour: Int) {
+        context.dataStore.edit { it[reminderEnabledKey] = enabled; it[reminderHourKey] = hour.coerceIn(0, 23) }
+    }
 
     private fun today(): String = java.time.LocalDate.now().toString()
 

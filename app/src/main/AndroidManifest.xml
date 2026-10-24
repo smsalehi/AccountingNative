@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- No permissions: backups are read/written through the system file picker (SAF). -->
+    <!-- Backups are read/written through the system file picker (SAF); no storage permissions. -->
+    <!-- Check reminders: local notifications only, no internet (checkNotifications.ts). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- The original Capacitor app declares both exact-alarm permissions; USE_EXACT_ALARM is
+         granted at install time to reminder apps, SCHEDULE_EXACT_ALARM is the fallback. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="true"
@@ -21,5 +28,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".data.CheckReminderReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".data.CheckReminderBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
