@@ -1,43 +1,68 @@
-# حسابداری هوشمند — Native Android (Kotlin / Jetpack Compose) — **Phase 1, not the finished app**
+# حسابداری هوشمند — Native Android (Kotlin / Jetpack Compose)
 
-> **Status in one paragraph.** This is an early stage of converting the React + Capacitor app to a native Android app.
-> The **business-logic layer is complete and verified against the original code**; the **UI has one pixel-targeted screen
-> (Accounts, with the app header and bottom bar)** plus a simple Settings screen. Transactions, Persons, Loans, Checks, Categories, pickers, notifications, Excel/PDF export, folder/auto backup and bank
-> logos are **not ported yet**. The Android part (Gradle, Compose, ViewModel, storage) was **never compiled or run** — the build
-> environment used to write it had no Android SDK and no access to Google/Maven repositories. Do not treat this as a release.
+> **Status in one paragraph.** Native port of the React + Capacitor app, well past Phase 1:
+> **all five tabs are ported** (Accounts, Transactions, Persons, Loans+Checks, Settings) with real
+> database reads/writes, the new-transaction modal, the person / check / loan forms, the check
+> deposit and loan-history modals, check reminders as exact system alarms, Excel/PDF export into a
+> persisted SAF folder and the in-app log center. The GitHub Actions build (unit parity tests →
+> signed arm64 APK → rolling `latest` release) is green. Still missing: auto-backup / folder
+> backup / Google Drive, and a couple of small settings affordances (exports-folder management UI).
 
 ## What is verified (and how)
-- `app/src/main/java/com/myaccounting/app/domain/` is pure Kotlin (no Android imports). It was compiled with Kotlin 2.1.20 on a plain JDK 21.
-- 32 scenario groups (≈2,500 values: Jalali conversions for 20 years, leap years, currency text, balances, loan schedules,
-  check urgency, dollar-rate interpolation/parsing/merge, import repair) were computed by the **original TypeScript** and by the
-  **Kotlin port** and compared: **identical**. Data: `app/src/test/resources/gold_ts.txt`, generator: `tools/golden/`.
-- `BackupCodec` decodes `.json.gz`, plain JSON and the legacy base64 variants (JVM checks).
-- NOT verified: everything that needs Android (Compose UI, ViewModel, DataStore, file pickers, font rendering), the JUnit wrappers
-  (`GoldenParityTest`, `BackupCodecTest` — they call the same code that was run via `main`), Gradle sync, APK build.
+- `app/src/main/java/com/myaccounting/app/domain/` is pure Kotlin (no Android imports), golden-parity
+  tested: 32 scenario groups (≈2,500 values: Jalali conversions, leap years, currency text, balances,
+  loan schedules, check urgency, dollar-rate interpolation/parsing/merge, import repair, transaction
+  filters) computed by the **original TypeScript** and the **Kotlin port**, compared identical.
+  Data: `app/src/test/resources/gold_ts.txt`, generator: `tools/golden/`.
+- `BackupCodec` decodes `.json.gz`, plain JSON and the legacy base64 variants.
+- The whole app compiles and the parity tests run on every push via
+  `.github/workflows/build-android.yml` (also builds + signs the arm64 APK).
 
 ## Build
-**Target:** Android 16+ only (minSdk/targetSdk/compileSdk 36), **arm64-v8a only**. Toolchain mirrors the original Capacitor 8 build: JDK 21, AGP 8.13.0, Gradle 8.14.3 (+ Kotlin 2.1.20, Compose BOM 2025.02.00).
-- **GitHub Actions** (`.github/workflows/build-android.yml`, same flow as the original workflow): unit tests (parity with original logic) → `assembleRelease` → zipalign + apksigner with the repo's encrypted keystore and the same four secrets (`ANDROID_KEYSTORE_KEY`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`) → check the APK is minSdk 36 / arm64-only → publish `myaccounting-native-arm64.apk` to the rolling `latest` release.
-- Locally: Android Studio (Narwhal or newer) → open the folder → sync (the Gradle wrapper *jar* is not included; use Gradle 8.14.3) → `gradle assembleDebug`, tests: `gradle testDebugUnitTest`.
-- **The Android layer has never been compiled.** The first CI run is the first real compile; if it fails, the first error in the log is what to fix.
-- Same `applicationId` (`com.myaccounting.app`) and same signing key as the Capacitor app ⇒ Android treats it as an update of that app. The old app's data lives in its WebView storage and does NOT carry over: export a backup from the old app first, then import it here.
-- The original also declares alarm/notification permissions for check reminders (`SCHEDULE_EXACT_ALARM`, `USE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`, `POST_NOTIFICATIONS`). They are not declared here yet because the reminder feature is not ported.
+**Target:** Android 16+ only (minSdk/targetSdk/compileSdk 36), **arm64-v8a only**. Toolchain mirrors
+the original Capacitor 8 build: JDK 21, AGP 8.13.0, Gradle 8.14.3 (+ Kotlin 2.1.20, Compose BOM 2025.02.00).
+- **GitHub Actions** (`.github/workflows/build-android.yml`): unit tests → `assembleRelease` → zipalign +
+  apksigner with the repo's encrypted keystore and the four secrets → minSdk/arm64 checks → publish
+  `myaccounting-native-arm64.apk` to the rolling `latest` release.
+- Locally: Android Studio (Narwhal+) → open → sync (Gradle wrapper jar not included; use Gradle 8.14.3)
+  → `gradle assembleDebug`, tests: `gradle testDebugUnitTest`.
+- Same signing key as the Capacitor app. The old app's data lives in its WebView storage and does NOT
+  carry over: export a backup from the old app first, then import it here (Settings ▸ «ایمپورت بکاپ»).
+- Permissions: `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, `USE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`
+  (check reminders only). No storage permissions — backups and exports go through SAF.
 
-## Seeing the real native UI (screenshots + pixel diff)
-`.github/workflows/screenshots.yml` (manual: Actions ▸ *Native UI screenshots* ▸ Run workflow) builds a debug APK, runs it on an Android 16 emulator
-set to 1080×2340 @ 440 dpi, dark, 3-button navigation, seeds `tools/screenshot/make_sample_db.py` (reproduces the numbers visible in the reference screenshots),
-captures the Accounts screen expanded and collapsed, and diffs both against `docs/reference/*.png`. Download the `native-screenshots` artifact
-(`*_side_by_side.png` = reference | native | diff, `report.txt` = % of differing pixels per band). Not run yet.
+## Screens (all read the live database)
+- **Accounts** (`AccountsView.tsx`): group cards, fold/reorder/rename, «راکد», bank logos, account
+  settings + bank picker dialogs, «پس از چک‌ها», drag & drop.
+- **Transactions** (`TransactionsView.tsx`): day-grouped list, project summary cards, full filter card
+  (search/date presets/type/multi-select pickers), new/edit transaction modal with calculator input,
+  Excel + PDF export (CSV / print-ready HTML written into the user's chosen folder).
+- **Persons** (`PersonsView.tsx`): summary cards, groups, search, person cards with real balances,
+  new/edit person modal, «ثبت تراکنش» shortcut.
+- **Loans + Checks** (`DeptsView.tsx` / `ChecksView.tsx`): installment stats + progress, add/edit loan
+  modals, transaction history per loan, checks with urgency, pass/bounce/cancel, revert, partial
+  deposits (DepositModal), new/edit check modal, reminder settings modal.
+- **Settings** (`SettingsView.tsx`): unit/theme/font-scale, backup import/export, dollar-rate import,
+  categories & projects management, log center (stats/filters/search/JSON+TXT export/clear).
+- Header + bottom bar + FAB + toasts + notification dropdown (loans) with quick «پرداخت قسط».
+
+## Check reminders
+`checkNotifications.ts` ported: for every pending check, reminders at 3 days / 1 day / deadline day at
+the configured hour, scheduled as exact `AlarmManager` alarms that post local notifications on the
+«checks» channel; rescheduling cancels all previous reminder alarms first; a boot receiver re-arms them
+after reboot; reminder ids are the same FNV-1a hash of `checkUid:days` as the web.
 
 ## Data
-- The whole database is one JSON file in app-private storage (`files/smart_accounting_db_v1.json`), in the **original backup format**, written atomically.
-  Room was deliberately not introduced yet: it would require re-modelling every table before the screens that use it exist.
-- Import: Settings ▸ «ایمپورت بکاپ» (system file picker, confirm before replacing). Export: «ذخیره بکاپ (JSON)». No permissions requested.
-- Amounts are `Double` like the original (whole toman values are exact below 2^53); this keeps results identical to the web app.
+- The whole database is one JSON file in app-private storage (`files/smart_accounting_db_v1.json`), in
+  the **original backup format**, written atomically. Room was deliberately not introduced.
+- Import/export via SAF pickers; Excel/PDF exports go into a user-chosen folder persisted once
+  (first export asks, then writes silently — same flow as `exportDelivery.ts`).
 
 ## Known limitations / deviations
 - Unknown extra JSON fields on rows are not preserved on export (only modelled fields are written).
 - Unknown check `Status` values become `cancelled`; non-`person` check kinds become `own`.
-- `Accounts` rows that are `null` are dropped (the original turns them into phantom accounts when no groups exist).
+- Null rows in `Accounts` are dropped (the original turns them into phantom accounts).
 - Fractional Jalali year/month/day in due dates are rejected instead of being half-processed.
-- See `SOURCE_AUDIT.md` (only the files marked in the table, not the whole repo were actually read), `FEATURE_TRACEABILITY.md`, `VISUAL_PARITY.md` (no visual check done).
+- The in-app log keeps the last 500 events in memory (the web persisted them to localStorage).
+- Auto-backup on exit, folder backup and Google Drive backup are **not ported yet**.
+- See `SOURCE_AUDIT.md`, `FEATURE_TRACEABILITY.md`, `VISUAL_PARITY.md` for per-feature details.
