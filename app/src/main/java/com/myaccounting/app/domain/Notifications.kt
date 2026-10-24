@@ -69,7 +69,8 @@ object Notifications {
 
     /** شناسه عددی ۳۲بیتیِ پایدار از یک کلید متنی (FNV-1a، همان web). */
     fun reminderNotificationId(key: String): Int {
-        var h = 2166136261
+        // FNV-1a offset basis 2166136261 = 0x811C9DC5 (fits Int as a negative value)
+        var h = 0x811C9DC5.toInt()
         for (ch in key) {
             h = h xor ch.code
             h *= 16777619

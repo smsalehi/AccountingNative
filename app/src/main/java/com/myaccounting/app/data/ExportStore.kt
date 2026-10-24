@@ -13,6 +13,11 @@ import java.io.FileOutputStream
  */
 object ExportStore {
 
+    private val projection = arrayOf(
+        DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+        DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+    )
+
     fun mimeOf(fileName: String): String =
         if (fileName.endsWith(".html", ignoreCase = true)) "text/html" else "text/csv"
 
@@ -34,15 +39,7 @@ object ExportStore {
 
     private fun findChild(resolver: ContentResolver, folder: Uri, fileName: String): Uri? {
         return try {
-            val children = resolver.queryChildDocuments(
-                folder,
-                arrayOf(
-                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                    DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                ),
-                null,
-                null,
-            )
+            val children = resolver.queryChildDocuments(folder, projection, null)
             var found: Uri? = null
             if (children != null) {
                 children.use { c ->

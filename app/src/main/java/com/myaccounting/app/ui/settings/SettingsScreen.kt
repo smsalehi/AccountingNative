@@ -288,15 +288,7 @@ fun SettingsScreen(
 
             SettingsTab.CATEGORIES -> item(key = "categories") { CategoriesTab(state, vm) }
             SettingsTab.PROJECTS -> item(key = "projects") { ProjectsTab(state, vm) }
-            SettingsTab.LOGS -> item(key = "logs") {
-                Panel {
-                    SectionTitle("مرکز لاگ برنامه", R.drawable.ic_lucide_file_text, dk(Tw.Sky600, Tw.Sky400))
-                    TwText(
-                        "در نسخه نیتیو، رویدادها و خطاها در حافظه دستگاه ذخیره می‌شوند و این صفحه هنوز به لاگ‌های داخلی وصل نشده است.",
-                        0.75f, 1.5f, dk(Tw.Slate500, Tw.Slate400),
-                    )
-                }
-            }
+            SettingsTab.LOGS -> item(key = "logs") { LogsTab(vm) }
         }
     }
 

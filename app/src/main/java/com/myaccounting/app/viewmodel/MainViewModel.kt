@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.myaccounting.app.data.AppPrefs
+import com.myaccounting.app.data.AppLog
 import com.myaccounting.app.data.DatabaseStore
 import com.myaccounting.app.data.ThemeMode
 import com.myaccounting.app.domain.Account
@@ -237,6 +238,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             persist(db.copy(transactions = transactions, transactionDetails = details))
             emit(if (isEditing) "تراکنش با موفقیت ویرایش شد." else "تراکنش با موفقیت ثبت شد.", ToastKind.SUCCESS)
+            AppLog.success(AppLog.Category.TRANSACTION, if (isEditing) "ویرایش تراکنش" else "ثبت تراکنش", tx.desc)
         }
     }
 
@@ -250,6 +252,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     transactionDetails = db.transactionDetails.filter { it.transactionUid != uid },
                 ),
             )
+            AppLog.warning(AppLog.Category.TRANSACTION, "حذف تراکنش", uid)
         }
     }
 
@@ -281,8 +284,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     "ایمپورت انجام شد — ${v.stats}" + if (result.repaired.isNotEmpty()) " (${result.repaired.size} مورد ترمیم)" else "",
                     ToastKind.SUCCESS,
                 )
+                AppLog.success(AppLog.Category.IMPORT, "ایمپورت بکاپ انجام شد", "${v.stats}" + if (result.repaired.isNotEmpty()) " — ${result.repaired.size} مورد ترمیم" else "")
             } catch (e: Exception) {
                 emit("ایمپورت ناموفق بود: ${e.message ?: e.javaClass.simpleName}", ToastKind.ERROR)
+                AppLog.error(AppLog.Category.IMPORT, "ایمپورت بکاپ ناموفق بود", e.message)
             }
         }
     }
@@ -297,8 +302,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     } ?: throw IllegalStateException("فایل مقصد باز نشد")
                 }
                 emit("بکاپ ذخیره شد.", ToastKind.SUCCESS)
+                AppLog.success(AppLog.Category.BACKUP, "بکاپ ذخیره شد")
             } catch (e: Exception) {
                 emit("ذخیره بکاپ ناموفق بود: ${e.message ?: e.javaClass.simpleName}", ToastKind.ERROR)
+                AppLog.error(AppLog.Category.BACKUP, "ذخیره بکاپ ناموفق بود", e.message)
             }
         }
     }
