@@ -39,7 +39,8 @@ object ExportStore {
 
     private fun findChild(resolver: ContentResolver, folder: Uri, fileName: String): Uri? {
         return try {
-            val children = resolver.queryChildDocuments(folder, projection, null)
+            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(folder, DocumentsContract.getDocumentId(folder))
+            val children = resolver.query(childrenUri, projection, null, null, null)
             var found: Uri? = null
             if (children != null) {
                 children.use { c ->

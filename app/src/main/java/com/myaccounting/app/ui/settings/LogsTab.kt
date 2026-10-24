@@ -195,6 +195,7 @@ fun LogsTab(vm: MainViewModel) {
     }
 }
 
+@Composable
 private fun levelColor(level: AppLog.Level): Color = when (level) {
     AppLog.Level.INFO -> dk(Tw.Sky600, Tw.Sky400)
     AppLog.Level.SUCCESS -> dk(Tw.Emerald600, Tw.Emerald400)
