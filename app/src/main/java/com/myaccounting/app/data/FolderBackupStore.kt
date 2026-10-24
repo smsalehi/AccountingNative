@@ -67,6 +67,7 @@ object FolderBackupStore {
         return bytes to bytes.size
     }
 
+    /** Writes gzip bytes into the folder; throws with a readable message instead of failing silently. */
     fun writeGzip(context: Context, folder: Uri, fileName: String, gzipBytes: ByteArray): Boolean {
         return writeToDoc(context, folder, fileName, "application/gzip") { out -> out.write(gzipBytes) }
     }
@@ -76,19 +77,26 @@ object FolderBackupStore {
         return writeToDoc(context, folder, fileName, "application/json") { out -> out.write(bytes) }
     }
 
-    private fun writeToDoc(context: Context, folder: Uri, fileName: String, mime: String, write: (java.io.OutputStream) -> Unit): Boolean {
-        return try {
-            val resolver = context.contentResolver
-            val docUri = findChild(context, folder, fileName)
-                ?: DocumentsContract.createDocument(resolver, folder, mime, fileName)
-                ?: return false
-            resolver.openFileDescriptor(docUri, "w")?.use { pfd ->
-                java.io.FileOutputStream(pfd.fileDescriptor).use(write)
-            } ?: return false
-            true
-        } catch (_: Exception) {
-            false
+    /** True when the app still holds a persisted write grant for the tree uri. */
+    fun hasWritePermission(context: Context, folder: Uri): Boolean =
+        context.contentResolver.persistedUriPermissions.any {
+            it.uri == folder && it.isWritePermission
         }
+
+    private fun writeToDoc(context: Context, folder: Uri, fileName: String, mime: String, write: (java.io.OutputStream) -> Unit): Boolean {
+        if (!hasWritePermission(context, folder)) {
+            throw SecurityException("مجوز نوشتن به پوشه بکاپ موجود نیست؛ پوشه را دوباره متصل کنید.")
+        }
+        val resolver = context.contentResolver
+        val docUri = findChild(context, folder, fileName)
+            ?: DocumentsContract.createDocument(resolver, folder, mime, fileName)
+            // some providers reject unknown mimes (application/gzip) — retry with a generic one
+            ?: DocumentsContract.createDocument(resolver, folder, "application/octet-stream", fileName)
+            ?: throw IllegalStateException("ساخت فایل «$fileName» در پوشه بکاپ ممکن نشد.")
+        val pfd = resolver.openFileDescriptor(docUri, "w")
+            ?: throw IllegalStateException("باز کردن فایل «$fileName» ممکن نشد.")
+        pfd.use { java.io.FileOutputStream(it.fileDescriptor).use(write) }
+        return true
     }
 
     fun fileSize(context: Context, folder: Uri, fileName: String): Long? = try {

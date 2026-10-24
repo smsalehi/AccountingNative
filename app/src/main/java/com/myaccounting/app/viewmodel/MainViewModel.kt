@@ -357,25 +357,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         JalaliDate.getFullJalaliDate(System.currentTimeMillis()) + " - " +
             java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
 
-    /** «بکاپ دستی»: a timestamped gzip file, always written. */
-    fun manualFolderBackup(kind: String) {
+    /**
+     * «بکاپ دستی»: a timestamped gzip file, always written. [uriOverride] carries the folder that
+     * was just picked (the persisted state may not have landed yet).
+     */
+    fun manualFolderBackup(kind: String, uriOverride: String? = null) {
         val db = dbFlow.value ?: return
         val cfg = backupCfg(kind)
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val st = (if (kind == "google") backupGoogle else backupLocal).value
-                if (!st.connected) { warn("ابتدا پوشه بکاپ را متصل کنید."); return@launch }
+                val uriStr = uriOverride ?: st.uri
+                if (uriStr.isNullOrEmpty()) { warn("ابتدا پوشه بکاپ را متصل کنید."); return@launch }
                 val (bytes, size) = FolderBackupStore.gzipPayload(db)
                 val name = FolderBackupStore.manualFileName(cfg.manualPrefix)
-                val ok = FolderBackupStore.writeGzip(getApplication(), Uri.parse(st.uri), name, bytes)
-                if (ok) {
-                    prefs.stampBackupSync(kind, stampLabel())
-                    success("بکاپ دستی ذخیره شد: $name")
-                    AppLog.success(AppLog.Category.BACKUP, "بکاپ دستی «${cfg.title}» ذخیره شد", "$name ($size bytes)")
-                } else {
-                    warn("نوشتن بکاپ دستی ناموفق بود.")
-                    AppLog.error(AppLog.Category.BACKUP, "نوشتن بکاپ دستی ناموفق بود", name)
-                }
+                FolderBackupStore.writeGzip(getApplication(), Uri.parse(uriStr), name, bytes)
+                prefs.stampBackupSync(kind, stampLabel())
+                success("بکاپ دستی ذخیره شد: $name")
+                AppLog.success(AppLog.Category.BACKUP, "بکاپ دستی «${cfg.title}» ذخیره شد", "$name ($size bytes)")
             } catch (e: Exception) {
                 warn("بکاپ دستی ناموفق بود: ${e.message ?: e.javaClass.simpleName}")
                 AppLog.error(AppLog.Category.BACKUP, "بکاپ دستی ناموفق بود", e.message)

@@ -67,9 +67,14 @@ fun FolderBackupSections(vm: MainViewModel) {
                     uri,
                     android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
                 )
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                com.myaccounting.app.data.AppLog.error(
+                    com.myaccounting.app.data.AppLog.Category.BACKUP,
+                    "ثبت مجوز پایدار پوشه بکاپ ناموفق بود", e.message,
+                )
+            }
             vm.saveBackupFolder(kind, uri, folderDisplayName(context, uri))
-            if (runBackupAfterPick) vm.manualFolderBackup(kind)
+            if (runBackupAfterPick) vm.manualFolderBackup(kind, uri.toString())
         }
         runBackupAfterPick = false
     }
@@ -83,10 +88,17 @@ fun FolderBackupSections(vm: MainViewModel) {
     var restoreTarget by remember { mutableStateOf<Pair<String, String>?>(null) } // kind to fileName
 
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(rem(1f))) {
-        BackupSection(vm, FolderBackupStore.GOOGLE, google, onConnect = { connect("google", false) }, onBackupNow = { connect("google", true) },
-            onRestore = { restoreTarget = "google" to it })
-        BackupSection(vm, FolderBackupStore.LOCAL, local, onConnect = { connect("local", false) }, onBackupNow = { connect("local", true) },
-            onRestore = { restoreTarget = "local" to it })
+        BackupSection(vm, FolderBackupStore.GOOGLE, google,
+            onConnect = { connect("google", false) },
+            // وقتی پوشه متصل است، «بکاپ دستی» مستقیم می‌نویسد و دوباره پوشه نمی‌پرسد
+            onBackupNow = { if (google.connected) vm.manualFolderBackup("google") else connect("google", true) },
+            onRestore = { restoreTarget = "google" to it },
+        )
+        BackupSection(vm, FolderBackupStore.LOCAL, local,
+            onConnect = { connect("local", false) },
+            onBackupNow = { if (local.connected) vm.manualFolderBackup("local") else connect("local", true) },
+            onRestore = { restoreTarget = "local" to it },
+        )
     }
 
     restoreTarget?.let { (kind, fileName) ->
