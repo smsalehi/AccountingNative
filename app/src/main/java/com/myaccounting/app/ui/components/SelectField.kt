@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import com.myaccounting.app.R
 import com.myaccounting.app.ui.theme.FW
@@ -96,6 +97,7 @@ fun TwSelectorField(
     action: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    actionColor: Color = dk(Tw.Sky600, Tw.Sky400),
     leading: @Composable () -> Unit,
 ) {
     val shape = RoundedCornerShape(rem(0.75f))
@@ -125,8 +127,8 @@ fun TwSelectorField(
             horizontalArrangement = Arrangement.spacedBy(rem(0.125f)),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TwText(action, 0.6875f, 1f, dk(Tw.Sky600, Tw.Sky400), weight = FW.Semibold, maxLines = 1)
-            LucideIcon(R.drawable.ic_lucide_chevron_left, 0.875f, dk(Tw.Sky600, Tw.Sky400))
+            TwText(action, 0.6875f, 1f, actionColor, weight = FW.Semibold, maxLines = 1)
+            LucideIcon(R.drawable.ic_lucide_chevron_left, 0.875f, actionColor)
         }
     }
 }

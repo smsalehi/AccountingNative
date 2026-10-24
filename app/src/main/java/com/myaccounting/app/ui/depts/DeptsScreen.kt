@@ -69,6 +69,9 @@ fun DeptsScreen(
     val unit = state.effectiveUnit
     var showHidden by rememberSaveable { mutableStateOf(false) }
     val nowMs = remember { System.currentTimeMillis() }
+    // Add New Loan Modal / Edit Dept Modal (DeptsView.tsx).
+    var addDialogOpen by remember { mutableStateOf(false) }
+    var editingDept by remember { mutableStateOf<Dept?>(null) }
 
     val paidIndex = remember(db.transactions) { LoanSchedule.buildPaidIndex(db.transactions) }
     val projectsById = remember(db.projects) { db.projects.associate { it.uid to it.title } }
@@ -112,7 +115,7 @@ fun DeptsScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(rem(0.5f))) {
                     Row(
                         Modifier.background(Tw.Amber600, RoundedCornerShape(rem(0.75f)))
-                            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { vm.notPorted("افزودن وام جدید") }
+                            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { addDialogOpen = true }
                             .padding(horizontal = rem(0.875f), vertical = rem(0.5f)),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(rem(0.375f)),
@@ -163,10 +166,29 @@ fun DeptsScreen(
                 projectTitle = dept.projectUid?.let { projectsById[it] },
                 unit = unit,
                 onPay = { onPayInstallment(dept.uid) },
-                onEdit = { vm.notPorted("ویرایش وام") },
+                onEdit = { editingDept = dept },
                 onHistory = { vm.notPorted("ریز تراکنش‌های وام") },
             )
         }
+    }
+
+    if (addDialogOpen) {
+        DeptAddDialog(
+            unit = unit,
+            projects = db.projects,
+            onClose = { addDialogOpen = false },
+            onAdd = { vm.saveDept(it) },
+            onError = { vm.warn(it) },
+        )
+    }
+    editingDept?.let { dept ->
+        DeptEditDialog(
+            dept = dept,
+            projects = db.projects,
+            onClose = { editingDept = null },
+            onUpdate = { vm.saveDept(it) },
+            onError = { vm.warn(it) },
+        )
     }
 }
 

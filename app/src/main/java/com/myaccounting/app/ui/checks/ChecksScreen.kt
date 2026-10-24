@@ -68,6 +68,9 @@ fun ChecksScreen(
     var kindFilter by rememberSaveable { mutableStateOf("all") }
     var expandedUid by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingConfirm by remember { mutableStateOf<PendingConfirm?>(null) }
+    // CheckFormModal isOpen + editing (null = add mode).
+    var checkDialogOpen by remember { mutableStateOf(false) }
+    var editingCheck by remember { mutableStateOf<Check?>(null) }
 
     val nowMs = remember { System.currentTimeMillis() }
     val txIndex = remember(db.transactions) { Checks.buildTxByUidIndex(db.transactions) }
@@ -122,7 +125,8 @@ fun ChecksScreen(
                     Row(
                         Modifier.background(Tw.Amber600, RoundedCornerShape(rem(0.75f)))
                             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                                vm.notPorted("چک جدید")
+                                editingCheck = null
+                                checkDialogOpen = true
                             }
                             .padding(horizontal = rem(0.875f), vertical = rem(0.5f)),
                         verticalAlignment = Alignment.CenterVertically,
@@ -250,7 +254,7 @@ fun ChecksScreen(
                         else "آیا از حذف این چک مطمئنید؟",
                     ) { vm.deleteCheck(c.uid) }
                 },
-                onEdit = { vm.notPorted("ویرایش چک") },
+                onEdit = { editingCheck = c; checkDialogOpen = true },
                 onDeposit = { vm.notPorted("ثبت واریز چک") },
             )
         }
@@ -263,6 +267,18 @@ fun ChecksScreen(
             onCancel = { pendingConfirm = null },
             confirmLabel = "تأیید",
             variant = req.variant,
+        )
+    }
+
+    if (checkDialogOpen) {
+        CheckDialog(
+            editing = editingCheck,
+            db = db,
+            unit = unit,
+            onClose = { checkDialogOpen = false },
+            onSubmit = { vm.saveCheck(it, editingCheck != null) },
+            onAddSubject = { vm.saveSubject(it) },
+            onError = { vm.warn(it) },
         )
     }
 }
