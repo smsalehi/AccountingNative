@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import com.myaccounting.app.domain.AccountingDatabase
 import com.myaccounting.app.domain.BackupCodec
+import com.myaccounting.app.domain.DatabaseCodec
 import java.io.FileNotFoundException
 
 /**
