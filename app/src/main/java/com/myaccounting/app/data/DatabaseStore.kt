@@ -165,7 +165,7 @@ class DatabaseStore(private val context: Context) {
             android.content.ContentValues().apply {
                 put("uid", r.uid)
                 put("sort", r.sort)
-                put("json", r.json)
+                put("json", r.json())
             },
             SQLiteDatabase.CONFLICT_REPLACE,
         )
