@@ -11,7 +11,15 @@ import com.myaccounting.app.domain.Account
 import com.myaccounting.app.domain.AccountGroup
 import com.myaccounting.app.domain.AccountingDatabase
 import com.myaccounting.app.domain.Balance
+import com.myaccounting.app.domain.Check
+import com.myaccounting.app.domain.CheckDeposit
+import com.myaccounting.app.domain.CheckKind
+import com.myaccounting.app.domain.CheckStatus
 import com.myaccounting.app.domain.Checks
+import com.myaccounting.app.domain.Dept
+import com.myaccounting.app.domain.JalaliDate
+import com.myaccounting.app.domain.Person
+import com.myaccounting.app.domain.Project
 import com.myaccounting.app.domain.LoanSchedule
 import com.myaccounting.app.domain.Notifications
 import com.myaccounting.app.domain.Reorder
@@ -292,6 +300,262 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 emit("وارد کردن نرخ دلار ناموفق بود: ${e.message ?: e.javaClass.simpleName}", ToastKind.ERROR)
             }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Persons — App.tsx handleAddPerson / handleEditPerson / delete + reorder
+    // -----------------------------------------------------------------------
+
+    fun savePerson(person: Person) {
+        val db = dbFlow.value ?: return
+        if (unitFlow.value == CurrencyUnit.USD) { warn(Currency.USD_READONLY_MESSAGE); return }
+        val persons = if (db.persons.any { it.uid == person.uid }) {
+            db.persons.map { if (it.uid == person.uid) person else it }
+        } else {
+            db.persons + person
+        }
+        viewModelScope.launch { persist(db.copy(persons = persons)) }
+    }
+
+    fun deletePerson(uid: String) {
+        val db = dbFlow.value ?: return
+        if (unitFlow.value == CurrencyUnit.USD) { warn(Currency.USD_READONLY_MESSAGE); return }
+        viewModelScope.launch { persist(db.copy(persons = db.persons.filter { it.uid != uid })) }
+    }
+
+    fun reorderPersons(fromUid: String, toUid: String) {
+        val db = dbFlow.value ?: return
+        val from = db.persons.indexOfFirst { it.uid == fromUid }
+        val to = db.persons.indexOfFirst { it.uid == toUid }
+        if (from == -1 || to == -1 || from == to) return
+        viewModelScope.launch { persist(db.copy(persons = Reorder.reorderArray(db.persons, from, to))) }
+    }
+
+    fun reorderPersonGroups(fromUid: String, toUid: String) {
+        val db = dbFlow.value ?: return
+        val from = db.personGroups.indexOfFirst { it.uid == fromUid }
+        val to = db.personGroups.indexOfFirst { it.uid == toUid }
+        if (from == -1 || to == -1 || from == to) return
+        viewModelScope.launch { persist(db.copy(personGroups = Reorder.reorderArray(db.personGroups, from, to))) }
+    }
+
+    // -----------------------------------------------------------------------
+    // Depts — App.tsx handleAddDept / handleEditDept / delete + reorder
+    // -----------------------------------------------------------------------
+
+    fun saveDept(dept: Dept) {
+        val db = dbFlow.value ?: return
+        if (unitFlow.value == CurrencyUnit.USD) { warn(Currency.USD_READONLY_MESSAGE); return }
+        val depts = if (db.depts.any { it.uid == dept.uid }) {
+            db.depts.map { if (it.uid == dept.uid) dept else it }
+        } else {
+            db.depts + dept
+        }
+        viewModelScope.launch { persist(db.copy(depts = depts)) }
+    }
+
+    fun deleteDept(uid: String) {
+        val db = dbFlow.value ?: return
+        if (unitFlow.value == CurrencyUnit.USD) { warn(Currency.USD_READONLY_MESSAGE); return }
+        viewModelScope.launch { persist(db.copy(depts = db.depts.filter { it.uid != uid })) }
+    }
+
+    fun reorderDepts(fromUid: String, toUid: String) {
+        val db = dbFlow.value ?: return
+        val from = db.depts.indexOfFirst { it.uid == fromUid }
+        val to = db.depts.indexOfFirst { it.uid == toUid }
+        if (from == -1 || to == -1 || from == to) return
+        viewModelScope.launch { persist(db.copy(depts = Reorder.reorderArray(db.depts, from, to))) }
+    }
+
+    // -----------------------------------------------------------------------
+    // Checks — App.tsx handle*Check (same order of writes as the web app)
+    // -----------------------------------------------------------------------
+
+    fun saveCheck(check: Check, isEditing: Boolean) {
+        val db = dbFlow.value ?: return
+        val checks = if (isEditing) {
+            db.checks.map { if (it.uid == check.uid) check else it }
+        } else {
+            listOf(check) + db.checks
+        }
+        viewModelScope.launch {
+            persist(db.copy(checks = checks))
+            emit(if (isEditing) "چک ویرایش شد." else "چک ثبت شد.", ToastKind.SUCCESS)
+        }
+    }
+
+    /** Removes only the check; transactions already recorded for it stay in the accounts (like the web). */
+    fun deleteCheck(uid: String) {
+        val db = dbFlow.value ?: return
+        viewModelScope.launch { persist(db.copy(checks = db.checks.filter { it.uid != uid })) }
+    }
+
+    fun setCheckStatus(uid: String, status: CheckStatus) {
+        val db = dbFlow.value ?: return
+        val now = System.currentTimeMillis()
+        viewModelScope.launch {
+            persist(
+                db.copy(
+                    checks = db.checks.map {
+                        if (it.uid != uid) it
+                        else it.copy(status = status, passedAt = if (status == CheckStatus.PASSED) now else it.passedAt)
+                    },
+                ),
+            )
+        }
+    }
+
+    fun revertCheckToPending(uid: String) {
+        val db = dbFlow.value ?: return
+        val check = db.checks.firstOrNull { it.uid == uid } ?: return
+        if (check.status == CheckStatus.PENDING) return
+        // Undoing an own-check pass also removes the expense transaction it created.
+        val txUid = check.passedTransactionUid.takeIf { check.kind == CheckKind.OWN && check.status == CheckStatus.PASSED && !it.isNullOrEmpty() }
+        viewModelScope.launch {
+            persist(
+                db.copy(
+                    transactions = if (txUid != null) db.transactions.filter { it.uid != txUid } else db.transactions,
+                    transactionDetails = if (txUid != null) db.transactionDetails.filter { it.transactionUid != txUid } else db.transactionDetails,
+                    checks = db.checks.map {
+                        if (it.uid != uid) it
+                        else it.copy(status = CheckStatus.PENDING, passedTransactionUid = null, passedAt = null)
+                    },
+                ),
+            )
+        }
+    }
+
+    /** Own check passed: writes the expense transaction from the check's account (buildCheckTx in App.tsx). */
+    fun passOwnCheck(uid: String) {
+        val db = dbFlow.value ?: return
+        val check = db.checks.firstOrNull { it.uid == uid } ?: return
+        if (check.kind != CheckKind.OWN || check.status != CheckStatus.PENDING) return
+        val accountUid = check.accountUid
+        if (accountUid.isNullOrEmpty() || db.accounts.none { it.uid == accountUid }) {
+            warn("حساب این چک پیدا نشد؛ ابتدا چک را ویرایش و حساب را انتخاب کنید.")
+            return
+        }
+        val now = System.currentTimeMillis()
+        val amount = Math.abs(check.amount)
+        val tx = Transaction(
+            uid = "chk_pass_" + now.toString(36) + java.util.UUID.randomUUID().toString().take(3),
+            subjectUid = check.subjectUid,
+            transactionType = 1,
+            totalValue = amount,
+            dateTime = now,
+            persianDate = JalaliDate.formatJalaliDate(now),
+            projectUid = check.projectUid,
+            personUid = check.payeePersonUid,
+            sourceAccountUid = accountUid,
+            desc = "پاس شدن چک" + (check.checkNumber?.let { " شماره $it" } ?: "") + (check.desc?.let { " — $it" } ?: ""),
+            isHidden = 0,
+            checkUid = check.uid,
+        )
+        viewModelScope.launch {
+            persist(
+                db.copy(
+                    transactions = listOf(tx) + db.transactions,
+                    transactionDetails = Transactions.syncDetails(db.transactionDetails, tx),
+                    checks = db.checks.map {
+                        if (it.uid != uid) it
+                        else it.copy(status = CheckStatus.PASSED, passedTransactionUid = tx.uid, passedAt = now)
+                    },
+                ),
+            )
+            emit("پاس شدن چک ثبت شد و از موجودی حساب کسر گردید.", ToastKind.SUCCESS)
+        }
+    }
+
+    /** Person check deposit: one expense transaction + a deposit row, capped at the remaining amount. */
+    fun addCheckDeposit(checkUid: String, accountUid: String, amount: Double) {
+        val db = dbFlow.value ?: return
+        val check = db.checks.firstOrNull { it.uid == checkUid } ?: return
+        if (check.kind != CheckKind.PERSON) return
+        val remaining = Checks.checkRemaining(check, db.transactions)
+        val value = Math.min(Math.abs(Math.round(amount).toDouble()), remaining)
+        if (!(value > 0)) return
+        val now = System.currentTimeMillis()
+        val drawerName = db.persons.firstOrNull { it.uid == check.drawerPersonUid }?.fullName ?: ""
+        val tx = Transaction(
+            uid = "chk_dep_" + now.toString(36) + java.util.UUID.randomUUID().toString().take(3),
+            subjectUid = check.subjectUid,
+            transactionType = 1,
+            totalValue = value,
+            dateTime = now,
+            persianDate = JalaliDate.formatJalaliDate(now),
+            projectUid = check.projectUid,
+            personUid = check.drawerPersonUid,
+            sourceAccountUid = accountUid,
+            desc = "واریز برای چک $drawerName" + (check.checkNumber?.let { " شماره $it" } ?: ""),
+            isHidden = 0,
+            checkUid = check.uid,
+        )
+        val deposit = CheckDeposit(
+            uid = "dep_" + tx.uid,
+            accountUid = accountUid,
+            amount = value,
+            dateTime = tx.dateTime,
+            transactionUid = tx.uid,
+        )
+        viewModelScope.launch {
+            persist(
+                db.copy(
+                    transactions = listOf(tx) + db.transactions,
+                    transactionDetails = Transactions.syncDetails(db.transactionDetails, tx),
+                    checks = db.checks.map { if (it.uid != checkUid) it else it.copy(deposits = it.deposits + deposit) },
+                ),
+            )
+            emit(if (value >= remaining) "واریز کامل شد." else "واریز ثبت شد.", ToastKind.SUCCESS)
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Settings — subjects (settings → categories) and projects
+    // -----------------------------------------------------------------------
+
+    fun updateSubject(subject: Subject) {
+        val db = dbFlow.value ?: return
+        if (unitFlow.value == CurrencyUnit.USD) { warn(Currency.USD_READONLY_MESSAGE); return }
+        val subjects = if (db.subjects.any { it.uid == subject.uid }) {
+            db.subjects.map { if (it.uid == subject.uid) subject else it }
+        } else db.subjects + subject
+        viewModelScope.launch { persist(db.copy(subjects = subjects)) }
+    }
+
+    fun deleteSubject(uid: String) {
+        val db = dbFlow.value ?: return
+        if (unitFlow.value == CurrencyUnit.USD) { warn(Currency.USD_READONLY_MESSAGE); return }
+        viewModelScope.launch { persist(db.copy(subjects = db.subjects.filter { it.uid != uid })) }
+    }
+
+    fun addProject(project: Project) {
+        val db = dbFlow.value ?: return
+        if (unitFlow.value == CurrencyUnit.USD) { warn(Currency.USD_READONLY_MESSAGE); return }
+        viewModelScope.launch { persist(db.copy(projects = db.projects + project)) }
+    }
+
+    fun renameProject(uid: String, title: String) {
+        val db = dbFlow.value ?: return
+        val t = title.trim()
+        if (t.isEmpty()) return
+        if (unitFlow.value == CurrencyUnit.USD) { warn(Currency.USD_READONLY_MESSAGE); return }
+        viewModelScope.launch { persist(db.copy(projects = db.projects.map { if (it.uid == uid) it.copy(title = t) else it })) }
+    }
+
+    fun deleteProject(uid: String) {
+        val db = dbFlow.value ?: return
+        if (unitFlow.value == CurrencyUnit.USD) { warn(Currency.USD_READONLY_MESSAGE); return }
+        viewModelScope.launch { persist(db.copy(projects = db.projects.filter { it.uid != uid })) }
+    }
+
+    /** SettingsView "پاک‌سازی کامل داده‌ها": empty database, kept daily USD rates. */
+    fun resetData() {
+        val db = dbFlow.value ?: return
+        viewModelScope.launch {
+            persist(DatabaseStore.emptyDatabase().copy(exchangeRates = db.exchangeRates))
+            emit("همه داده‌ها پاک شد.", ToastKind.SUCCESS)
         }
     }
 }
