@@ -26,6 +26,7 @@ class AppPrefs(private val context: Context) {
     private val collapsedKey = stringSetPreferencesKey("collapsed_account_groups")
     private val notifDateKey = stringPreferencesKey("notif_dismissed_date")
     private val notifIdsKey = stringSetPreferencesKey("notif_dismissed_ids")
+    private val exportsFolderKey = stringPreferencesKey("exports_folder_uri")
 
     val theme: Flow<ThemeMode> = context.dataStore.data.map { ThemeMode.fromKey(it[themeKey]) }
     val unit: Flow<CurrencyUnit> = context.dataStore.data.map { p -> CurrencyUnit.values().firstOrNull { it.json == p[unitKey] } ?: CurrencyUnit.TOMAN }
@@ -36,6 +37,8 @@ class AppPrefs(private val context: Context) {
     val notifDismissed: Flow<Set<String>> = context.dataStore.data.map { p ->
         if (p[notifDateKey] != today()) emptySet() else p[notifIdsKey] ?: emptySet()
     }
+    /** The persisted SAF tree uri of the exports folder (exportDelivery.ts EXPORTS_PLUGIN_KEY). */
+    val exportsFolder: Flow<String> = context.dataStore.data.map { it[exportsFolderKey] ?: "" }
 
     suspend fun setTheme(mode: ThemeMode) { context.dataStore.edit { it[themeKey] = mode.key } }
     suspend fun setUnit(unit: CurrencyUnit) { context.dataStore.edit { it[unitKey] = unit.json } }
@@ -44,6 +47,7 @@ class AppPrefs(private val context: Context) {
     suspend fun setNotifDismissed(ids: Set<String>) {
         context.dataStore.edit { it[notifDateKey] = today(); it[notifIdsKey] = ids }
     }
+    suspend fun setExportsFolder(uri: String) { context.dataStore.edit { it[exportsFolderKey] = uri } }
 
     private fun today(): String = java.time.LocalDate.now().toString()
 

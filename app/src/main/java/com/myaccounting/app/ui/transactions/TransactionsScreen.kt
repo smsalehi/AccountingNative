@@ -82,6 +82,8 @@ fun TransactionsScreen(
     vm: MainViewModel,
     ui: TxUi = remember { TxUi() },
     onEditTransaction: (tx: Transaction) -> Unit = {},
+    onExportExcel: (List<Transaction>) -> Unit = {},
+    onExportPdf: (List<Transaction>) -> Unit = {},
 ) {
     if (!state.loaded) return
     val db = state.shownDb
@@ -139,8 +141,8 @@ fun TransactionsScreen(
     ) {
         item(key = "header") {
             TxHeader(
-                onExportExcel = { vm.notPorted("خروجی اکسل") },
-                onExportPdf = { vm.notPorted("خروجی PDF") },
+                onExportExcel = { onExportExcel(filtered) },
+                onExportPdf = { onExportPdf(filtered) },
             )
             Spacer(Modifier.height(rem(1.25f)))
         }

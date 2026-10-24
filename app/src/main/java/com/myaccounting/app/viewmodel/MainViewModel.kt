@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -165,6 +166,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun notPorted(what: String) { emit("$what — این بخش هنوز در نسخه نیتیو منتقل نشده است.", ToastKind.WARNING) }
 
     fun warn(message: String) { emit(message, ToastKind.WARNING) }
+    fun info(message: String) { emit(message, ToastKind.INFO) }
+    fun success(message: String) { emit(message, ToastKind.SUCCESS) }
+
+    /** The persisted SAF folder for Excel/PDF exports (exportDelivery.ts). */
+    suspend fun exportsFolderUri(): String = prefs.exportsFolder.first()
+    fun saveExportsFolder(uri: String) { viewModelScope.launch { prefs.setExportsFolder(uri) } }
 
     /** Drag & drop: the group [fromUid] takes the position of [toUid] (reorderArray semantics). */
     fun reorderGroups(fromUid: String, toUid: String) {

@@ -39,6 +39,7 @@ import com.myaccounting.app.ui.persons.PersonsScreen
 import com.myaccounting.app.ui.depts.DeptsChecksTab
 import com.myaccounting.app.ui.settings.SettingsScreen
 import com.myaccounting.app.ui.transactions.TxUi
+import com.myaccounting.app.ui.export.rememberExportDeliverer
 import com.myaccounting.app.ui.theme.LocalSafeInsets
 import com.myaccounting.app.ui.theme.SafeInsets
 import com.myaccounting.app.ui.theme.Tw
@@ -73,6 +74,10 @@ fun AppRoot(vm: MainViewModel, isDark: Boolean, themeMode: ThemeMode) {
     var txFilterRequestId by remember { mutableIntStateOf(0) }
     // The web keeps every view mounted, so the transactions filters survive tab switches.
     val txUi = remember { TxUi() }
+    // exportDelivery.ts native half: SAF folder picker + persisted exports folder.
+    val exportDeliverer = rememberExportDeliverer(vm)
+    // Exports always see the raw (toman) rows, even while the USD display view is on.
+    val rawTxsByUid = remember(state.db.transactions) { state.db.transactions.associateBy { it.uid } }
     LaunchedEffect(selectedAccountFilter) { txUi.applyAccountFilter(selectedAccountFilter) }
     LaunchedEffect(selectedDeptFilter) { txUi.applyDeptFilter(selectedDeptFilter) }
     LaunchedEffect(selectedProjectFilter) { txUi.applyProjectFilter(selectedProjectFilter) }
@@ -139,6 +144,20 @@ fun AppRoot(vm: MainViewModel, isDark: Boolean, themeMode: ThemeMode) {
                         ui = txUi,
                         onEditTransaction = { tx ->
                             txRequest = TxRequest(tx.transactionType, tx.sourceAccountUid, tx.deptUid, tx.projectUid, tx.personUid, tx)
+                        },
+                        onExportExcel = { list ->
+                            exportDeliverer.exportTransactionsExcel(
+                                list.mapNotNull { rawTxsByUid[it.uid] },
+                                state.db,
+                                state.effectiveUnit,
+                            )
+                        },
+                        onExportPdf = { list ->
+                            exportDeliverer.exportTransactionsPdf(
+                                list.mapNotNull { rawTxsByUid[it.uid] },
+                                state.db,
+                                state.effectiveUnit,
+                            )
                         },
                     )
                     Tab.PERSONS -> PersonsScreen(state, vm, onOpenNewTransactionForPerson = { uid -> openNewTransaction(personUid = uid) })
