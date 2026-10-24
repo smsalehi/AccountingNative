@@ -70,6 +70,9 @@ fun PersonsScreen(
     var search by rememberSaveable { mutableStateOf("") }
     var showHidden by rememberSaveable { mutableStateOf(false) }
     var collapsed by remember { mutableStateOf<Set<String>>(emptySet()) }
+    // PersonModal.tsx isOpen + person (null = add mode).
+    var personDialogOpen by remember { mutableStateOf(false) }
+    var editingPerson by remember { mutableStateOf<Person?>(null) }
     val term = search.trim()
 
     // balance = OldBalance + income(type 0/2) - expense(type 1), attributed only via PersonUID.
@@ -136,7 +139,8 @@ fun PersonsScreen(
                     TwText("اشخاص و طرف‌حساب‌ها", 1.25f, 1.75f, dk(Tw.Slate800, Tw.Slate100), weight = FW.Bold, maxLines = 1)
                     Row(horizontalArrangement = Arrangement.spacedBy(rem(0.5f))) {
                         PillButton("شخص جدید", R.drawable.ic_lucide_plus, Tw.White, Tw.Sky600) {
-                            vm.notPorted("شخص جدید")
+                            editingPerson = null
+                            personDialogOpen = true
                         }
                         PillButton(
                             "راکد",
@@ -295,7 +299,7 @@ fun PersonsScreen(
                                     stat = stats[p.uid],
                                     summary = checkSummaries[p.uid],
                                     unit = unit,
-                                    onEdit = { vm.notPorted("ویرایش شخص") },
+                                    onEdit = { editingPerson = p; personDialogOpen = true },
                                     onNewTransaction = { onOpenNewTransactionForPerson(p.uid) },
                                 )
                             }
@@ -304,6 +308,17 @@ fun PersonsScreen(
                 }
             }
         }
+    }
+
+    if (personDialogOpen) {
+        PersonDialog(
+            person = editingPerson,
+            groups = db.personGroups,
+            unit = unit,
+            onClose = { personDialogOpen = false },
+            onSave = { vm.savePerson(it) },
+            onError = { vm.warn(it) },
+        )
     }
 }
 
