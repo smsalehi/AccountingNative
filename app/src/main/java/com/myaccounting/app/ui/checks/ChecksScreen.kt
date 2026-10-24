@@ -75,6 +75,8 @@ fun ChecksScreen(
     // ReminderSettingsModal.
     var reminderDialogOpen by remember { mutableStateOf(false) }
     val reminderPrefs = vm.checkReminderPrefs.collectAsStateWithLifecycle().value
+    // DepositModal: the person check being funded.
+    var depositCheck by remember { mutableStateOf<Check?>(null) }
 
     val nowMs = remember { System.currentTimeMillis() }
     val txIndex = remember(db.transactions) { Checks.buildTxByUidIndex(db.transactions) }
@@ -264,7 +266,7 @@ fun ChecksScreen(
                     ) { vm.deleteCheck(c.uid) }
                 },
                 onEdit = { editingCheck = c; checkDialogOpen = true },
-                onDeposit = { vm.notPorted("ثبت واریز چک") },
+                onDeposit = { depositCheck = c },
             )
         }
     }
@@ -296,6 +298,18 @@ fun ChecksScreen(
             prefs = reminderPrefs,
             onChange = { vm.saveCheckReminderPrefs(it) },
             onClose = { reminderDialogOpen = false },
+        )
+    }
+
+    depositCheck?.let { c ->
+        DepositDialog(
+            check = c,
+            db = db,
+            unit = unit,
+            balances = state.balances,
+            onClose = { depositCheck = null },
+            onSubmit = { accountUid, amount -> vm.addCheckDeposit(c.uid, accountUid, amount) },
+            onError = { vm.warn(it) },
         )
     }
 }
