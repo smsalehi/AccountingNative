@@ -54,10 +54,22 @@ the configured hour, scheduled as exact `AlarmManager` alarms that post local no
 after reboot; reminder ids are the same FNV-1a hash of `checkUid:days` as the web.
 
 ## Data
-- The whole database is one JSON file in app-private storage (`files/smart_accounting_db_v1.json`), in
-  the **original backup format**, written atomically. Room was deliberately not introduced.
-- Import/export via SAF pickers; Excel/PDF exports go into a user-chosen folder persisted once
-  (first export asks, then writes silently — same flow as `exportDelivery.ts`).
+- **Native storage: SQLite** (`files/smart_accounting_db.sqlite`, one table per entity). Each row
+  stores its backup-format JSON (a single source of truth shared with the backup format), so a save
+  writes only the changed rows inside one transaction instead of re-serialising the whole document.
+  A legacy `smart_accounting_db_v1.json` from earlier native builds is migrated automatically.
+  The in-memory model and all domain logic (golden-tested against the original TypeScript) are
+  unchanged — SQLite is the persistence layer, Room was deliberately not introduced.
+- **Backups**: the JSON import/export in Settings stays for web interop (import a web backup any
+  time). The native folder backups (manual + auto) are **gzipped SQLite** files (`*.sqlite.gz`) —
+  restored through the same pipeline. The 20% size guard applies as before.
+- Excel/PDF exports go into a user-chosen folder persisted once (first export asks, then writes
+  silently — same flow as `exportDelivery.ts`).
+
+## Transactions tab display window
+By default the tab shows **only the last 7 days**; scrolling to the bottom (or tapping
+«نمایش تراکنش‌های قدیمی‌تر…») loads one more month each time. The summary totals always reflect the
+full filtered result (like the web), and an explicit date preset/range bypasses the window.
 
 ## Known limitations / deviations
 - Unknown extra JSON fields on rows are not preserved on export (only modelled fields are written).

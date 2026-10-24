@@ -15,7 +15,8 @@ Legend: **V** = ported and parity-checked against the original TypeScript output
 | DB normalize/sanitize/validate (`storage.ts`) | repair import, relink accounts, fix amounts | `DatabaseCodec.kt` | **V** (deviation: null `Accounts` rows are dropped) |
 | Backup formats (`folderBackup.ts` formats) | `.json.gz`, plain JSON, legacy base64 | `BackupCodec.kt` | **V**-style JVM checks |
 | Transaction filters (`TransactionsView`) | search/type/date presets/multi-select/dept | `TransactionFilters.kt` | **V** + unit tests |
-| Persistence | whole DB as one atomic JSON file | `DatabaseStore.kt` | **F** |
+| Persistence | **SQLite** (`DatabaseStore.kt`): per-entity tables storing backup-format rows, incremental diff writes, legacy-JSON migration; folder backups are gzipped SQLite | **F** (deviation from web's single-OPFS file, by design) |
+| Transactions display window | native-only: last-7-days default + scroll-to-load-older (30d steps) | `TransactionsScreen.kt` | **F** (native feature, not in web) |
 | Import/export backup (SAF) | confirm before replace | `SettingsScreen.kt`, `MainViewModel.kt` | **F** |
 | Currency unit + theme + font-scale prefs | persisted | `AppPrefs.kt` | **F** |
 | Accounts tab (`AccountsView.tsx`) | group cards, fold/reorder/rename, «راکد», balances, «پس از چک‌ها», bank logos | `ui/accounts/` | **F** |
