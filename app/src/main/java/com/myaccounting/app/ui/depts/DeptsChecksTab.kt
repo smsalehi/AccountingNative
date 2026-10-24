@@ -42,6 +42,7 @@ fun DeptsChecksTab(
     state: MainViewModel.UiState,
     vm: MainViewModel,
     onPayInstallment: (String) -> Unit = {},
+    onEditTransaction: (com.myaccounting.app.domain.Transaction) -> Unit = {},
 ) {
     var sub by rememberSaveable { mutableStateOf("loans") }
     val db = state.shownDb
@@ -61,7 +62,7 @@ fun DeptsChecksTab(
         }
         Box(Modifier.weight(1f)) {
             if (sub == "loans") {
-                DeptsScreen(state, vm, onPayInstallment = onPayInstallment)
+                DeptsScreen(state, vm, onPayInstallment = onPayInstallment, onEditTransaction = onEditTransaction)
             } else {
                 ChecksScreen(state, vm)
             }

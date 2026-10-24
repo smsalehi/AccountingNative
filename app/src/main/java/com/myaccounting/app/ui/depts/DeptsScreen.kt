@@ -63,6 +63,7 @@ fun DeptsScreen(
     state: MainViewModel.UiState,
     vm: MainViewModel,
     onPayInstallment: (String) -> Unit = {},
+    onEditTransaction: (com.myaccounting.app.domain.Transaction) -> Unit = {},
 ) {
     if (!state.loaded) return
     val db = state.shownDb
@@ -72,6 +73,8 @@ fun DeptsScreen(
     // Add New Loan Modal / Edit Dept Modal (DeptsView.tsx).
     var addDialogOpen by remember { mutableStateOf(false) }
     var editingDept by remember { mutableStateOf<Dept?>(null) }
+    // Transaction History Modal for Dept.
+    var historyDept by remember { mutableStateOf<Dept?>(null) }
 
     val paidIndex = remember(db.transactions) { LoanSchedule.buildPaidIndex(db.transactions) }
     val projectsById = remember(db.projects) { db.projects.associate { it.uid to it.title } }
@@ -167,7 +170,7 @@ fun DeptsScreen(
                 unit = unit,
                 onPay = { onPayInstallment(dept.uid) },
                 onEdit = { editingDept = dept },
-                onHistory = { vm.notPorted("ریز تراکنش‌های وام") },
+                onHistory = { historyDept = dept },
             )
         }
     }
@@ -188,6 +191,29 @@ fun DeptsScreen(
             onClose = { editingDept = null },
             onUpdate = { vm.saveDept(it) },
             onError = { vm.warn(it) },
+        )
+    }
+    historyDept?.let { dept ->
+        val accountsById = remember(db.accounts) { db.accounts.associateBy { it.uid } }
+        val banksById = remember(db.banks) { db.banks.associateBy { it.uid } }
+        val subjectsById = remember(db.subjects) { db.subjects.associateBy { it.uid } }
+        val st = stats[dept.uid]
+        DeptHistoryDialog(
+            dept = dept,
+            transactions = db.transactions,
+            paidSum = st?.paidSum ?: 0.0,
+            remainingValue = st?.remainingValue ?: dept.value,
+            unit = unit,
+            accountsById = accountsById,
+            banksById = banksById,
+            subjectsById = subjectsById,
+            onClose = { historyDept = null },
+            onPayInstallment = onPayInstallment,
+            onEditTransaction = {
+                // مثل وب: مودال تاریخچه بسته و تراکنش برای ویرایش به App.tsx می‌رود
+                historyDept = null
+                onEditTransaction(it)
+            },
         )
     }
 }
