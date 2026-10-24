@@ -166,6 +166,8 @@ fun SettingsScreen(
                     }
                 }
 
+                item(key = "folder_backup") { FolderBackupSections(vm) }
+
                 item(key = "display") {
                     Panel {
                         SectionTitle("تنظیمات نمایش و تم", R.drawable.ic_lucide_settings, dk(Tw.Sky600, Tw.Sky400))

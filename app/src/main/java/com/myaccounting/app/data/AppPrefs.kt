@@ -30,6 +30,8 @@ class AppPrefs(private val context: Context) {
     private val exportsFolderKey = stringPreferencesKey("exports_folder_uri")
     private val reminderEnabledKey = booleanPreferencesKey("check_reminders_enabled")
     private val reminderHourKey = intPreferencesKey("check_reminders_hour")
+    // FolderBackup per-kind keys: bk_<google|local>_{uri,name,lastsync,lastdate,blocked}
+    private fun bkKey(kind: String, field: String) = stringPreferencesKey("bk_${kind}_$field")
 
     val theme: Flow<ThemeMode> = context.dataStore.data.map { ThemeMode.fromKey(it[themeKey]) }
     val unit: Flow<CurrencyUnit> = context.dataStore.data.map { p -> CurrencyUnit.values().firstOrNull { it.json == p[unitKey] } ?: CurrencyUnit.TOMAN }
@@ -58,6 +60,56 @@ class AppPrefs(private val context: Context) {
     suspend fun setExportsFolder(uri: String) { context.dataStore.edit { it[exportsFolderKey] = uri } }
     suspend fun setCheckReminderPrefs(enabled: Boolean, hour: Int) {
         context.dataStore.edit { it[reminderEnabledKey] = enabled; it[reminderHourKey] = hour.coerceIn(0, 23) }
+    }
+
+    // --- FolderBackup per-kind prefs (folderBackup.ts localStorage keys) -----------------------------
+
+    data class BackupFolderState(
+        val uri: String = "",
+        val folderName: String = "",
+        val lastSync: String = "",
+        val lastAutoDate: String = "",
+        val blocked: String = "",
+    ) { val connected: Boolean get() = uri.isNotEmpty() }
+
+    fun backupFolder(kind: String): Flow<BackupFolderState> = context.dataStore.data.map { p ->
+        BackupFolderState(
+            uri = p[bkKey(kind, "uri")] ?: "",
+            folderName = p[bkKey(kind, "name")] ?: "",
+            lastSync = p[bkKey(kind, "lastsync")] ?: "",
+            lastAutoDate = p[bkKey(kind, "lastdate")] ?: "",
+            blocked = p[bkKey(kind, "blocked")] ?: "",
+        )
+    }
+
+    suspend fun setBackupFolder(kind: String, uri: String, folderName: String) {
+        context.dataStore.edit {
+            it[bkKey(kind, "uri")] = uri
+            it[bkKey(kind, "name")] = folderName
+            it.remove(bkKey(kind, "blocked"))
+        }
+    }
+
+    suspend fun clearBackupFolder(kind: String) {
+        context.dataStore.edit {
+            it.remove(bkKey(kind, "uri"))
+            it.remove(bkKey(kind, "name"))
+            it.remove(bkKey(kind, "lastsync"))
+            it.remove(bkKey(kind, "lastdate"))
+            it.remove(bkKey(kind, "blocked"))
+        }
+    }
+
+    suspend fun stampBackupSync(kind: String, label: String) {
+        context.dataStore.edit { it[bkKey(kind, "lastsync")] = label }
+    }
+
+    suspend fun setBackupAutoDate(kind: String, date: String) {
+        context.dataStore.edit { it[bkKey(kind, "lastdate")] = date }
+    }
+
+    suspend fun setBackupBlocked(kind: String, message: String) {
+        context.dataStore.edit { it[bkKey(kind, "blocked")] = message }
     }
 
     private fun today(): String = java.time.LocalDate.now().toString()

@@ -22,6 +22,12 @@ import com.myaccounting.app.viewmodel.MainViewModel
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
 
+    override fun onStop() {
+        super.onStop()
+        // autoBackup.ts: auto-backup on app close (google daily + local raw, both 20%-guarded).
+        viewModel.runAutoBackups(MainViewModel.AutoTrigger.EXIT)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {

@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.myaccounting.app.data.AppPrefs
 import com.myaccounting.app.data.AppLog
 import com.myaccounting.app.data.DatabaseStore
+import com.myaccounting.app.data.FolderBackupStore
 import com.myaccounting.app.data.ThemeMode
 import com.myaccounting.app.domain.Account
 import com.myaccounting.app.domain.AccountGroup
@@ -324,6 +325,168 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 emit("وارد کردن نرخ دلار ناموفق بود: ${e.message ?: e.javaClass.simpleName}", ToastKind.ERROR)
             }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Folder backup — folderBackup.ts + autoBackup.ts (google: daily gzip, local: raw on exit)
+    // -----------------------------------------------------------------------
+
+    val backupGoogle: StateFlow<AppPrefs.BackupFolderState> =
+        prefs.backupFolder("google").stateIn(viewModelScope, SharingStarted.Eagerly, AppPrefs.BackupFolderState())
+    val backupLocal: StateFlow<AppPrefs.BackupFolderState> =
+        prefs.backupFolder("local").stateIn(viewModelScope, SharingStarted.Eagerly, AppPrefs.BackupFolderState())
+
+    fun saveBackupFolder(kind: String, uri: Uri, folderName: String) {
+        viewModelScope.launch {
+            prefs.setBackupFolder(kind, uri.toString(), folderName)
+            AppLog.success(AppLog.Category.BACKUP, "پوشه بکاپ «$kind» متصل شد", folderName)
+        }
+    }
+
+    fun disconnectBackup(kind: String) {
+        viewModelScope.launch {
+            prefs.clearBackupFolder(kind)
+            AppLog.info(AppLog.Category.BACKUP, "اتصال پوشه بکاپ «$kind» قطع شد")
+        }
+    }
+
+    private fun backupCfg(kind: String) = if (kind == "google") FolderBackupStore.GOOGLE else FolderBackupStore.LOCAL
+
+    private fun stampLabel(): String =
+        JalaliDate.getFullJalaliDate(System.currentTimeMillis()) + " - " +
+            java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+
+    /** «بکاپ دستی»: a timestamped gzip file, always written. */
+    fun manualFolderBackup(kind: String) {
+        val db = dbFlow.value ?: return
+        val cfg = backupCfg(kind)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val st = (if (kind == "google") backupGoogle else backupLocal).value
+                if (!st.connected) { warn("ابتدا پوشه بکاپ را متصل کنید."); return@launch }
+                val (bytes, size) = FolderBackupStore.gzipPayload(db)
+                val name = FolderBackupStore.manualFileName(cfg.manualPrefix)
+                val ok = FolderBackupStore.writeGzip(getApplication(), Uri.parse(st.uri), name, bytes)
+                if (ok) {
+                    prefs.stampBackupSync(kind, stampLabel())
+                    success("بکاپ دستی ذخیره شد: $name")
+                    AppLog.success(AppLog.Category.BACKUP, "بکاپ دستی «${cfg.title}» ذخیره شد", "$name ($size bytes)")
+                } else {
+                    warn("نوشتن بکاپ دستی ناموفق بود.")
+                    AppLog.error(AppLog.Category.BACKUP, "نوشتن بکاپ دستی ناموفق بود", name)
+                }
+            } catch (e: Exception) {
+                warn("بکاپ دستی ناموفق بود: ${e.message ?: e.javaClass.simpleName}")
+                AppLog.error(AppLog.Category.BACKUP, "بکاپ دستی ناموفق بود", e.message)
+            }
+        }
+    }
+
+    /** Restores a backup file from the connected folder (same pipeline as importBackup). */
+    fun restoreFromFolder(kind: String, fileName: String) {
+        val st = (if (kind == "google") backupGoogle else backupLocal).value
+        if (!st.connected) { warn("ابتدا پوشه بکاپ را متصل کنید."); return }
+        viewModelScope.launch {
+            try {
+                val text = withContext(Dispatchers.IO) {
+                    FolderBackupStore.readBackupText(getApplication(), Uri.parse(st.uri), fileName)
+                } ?: throw IllegalStateException("خواندن فایل ناموفق بود")
+                val parsed = Json.parse(text)
+                val v = DatabaseCodec.validate(parsed)
+                if (!v.ok) { emit(v.reason ?: "ساختار فایل بکاپ معتبر نیست.", ToastKind.ERROR); return@launch }
+                val result = withContext(Dispatchers.Default) { DatabaseCodec.normalize(parsed) }
+                persist(result.db)
+                emit("بازیابی انجام شد — ${v.stats}", ToastKind.SUCCESS)
+                AppLog.success(AppLog.Category.IMPORT, "بازیابی از «$fileName»", "${v.stats}")
+            } catch (e: Exception) {
+                emit("بازیابی ناموفق بود: ${e.message ?: e.javaClass.simpleName}", ToastKind.ERROR)
+                AppLog.error(AppLog.Category.IMPORT, "بازیابی از پوشه بکاپ ناموفق بود", e.message)
+            }
+        }
+    }
+
+    enum class AutoTrigger { STARTUP, EXIT }
+
+    /**
+     * autoBackup.ts runAllAutoBackups: google = one gzip auto-backup per day into the fixed file;
+     * local = raw overwrite on every run; both guarded by the 20% rule. Never shows UI, never throws.
+     */
+    fun runAutoBackups(trigger: AutoTrigger) {
+        val db = dbFlow.value ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            if (!FolderBackupStore.hasUserData(db)) {
+                AppLog.info(AppLog.Category.BACKUP, "بکاپ خودکار رد شد: دیتابیس خالی است.")
+                return@launch
+            }
+            runGoogleDailyAutoBackup(trigger, db)
+            runLocalAutoBackup(db)
+        }
+    }
+
+    private suspend fun runGoogleDailyAutoBackup(trigger: AutoTrigger, db: AccountingDatabase) {
+        val cfg = FolderBackupStore.GOOGLE
+        try {
+            val today = java.time.LocalDate.now().toString()
+            val st = backupGoogle.value
+            if (!st.connected) return
+            if (st.lastAutoDate == today) { AppLog.info(AppLog.Category.BACKUP, "بکاپ خودکار گوگل: امروز قبلاً انجام شد."); return }
+            if (FolderBackupStore.isDriveFolderUri(st.uri) && !isOnline()) {
+                AppLog.warning(AppLog.Category.BACKUP, "بکاپ خودکار گوگل رد شد: آفلاین.")
+                return
+            }
+            val (bytes, size) = FolderBackupStore.gzipPayload(db)
+            val prev = FolderBackupStore.fileSize(getApplication(), Uri.parse(st.uri), cfg.autoFile)
+            if (!FolderBackupStore.decideReplace(prev, size.toLong())) {
+                val msg = "بکاپ خودکار امروز انجام نشد: حجم بکاپ جدید (${prev} → $size بایت) بیش از ۲۰٪ کمتر است؛ فایل قبلی حفظ شد."
+                prefs.setBackupBlocked("google", msg)
+                AppLog.warning(AppLog.Category.BACKUP, msg)
+                return
+            }
+            if (FolderBackupStore.writeGzip(getApplication(), Uri.parse(st.uri), cfg.autoFile, bytes)) {
+                prefs.setBackupAutoDate("google", today)
+                prefs.stampBackupSync("google", stampLabel())
+                prefs.setBackupBlocked("google", "")
+                AppLog.success(AppLog.Category.BACKUP, "بکاپ خودکار روزانه گوگل ذخیره شد.", "trigger=$trigger")
+            } else {
+                AppLog.error(AppLog.Category.BACKUP, "نوشتن بکاپ خودکار گوگل ناموفق بود")
+            }
+        } catch (e: Exception) {
+            AppLog.error(AppLog.Category.BACKUP, "خطا در بکاپ خودکار روزانه گوگل", e.message)
+        }
+    }
+
+    private suspend fun runLocalAutoBackup(db: AccountingDatabase) {
+        val cfg = FolderBackupStore.LOCAL
+        try {
+            val st = backupLocal.value
+            if (!st.connected) return
+            val json = DatabaseCodec.toJson(db)
+            val size = json.toByteArray(Charsets.UTF_8).size.toLong()
+            val prev = FolderBackupStore.fileSize(getApplication(), Uri.parse(st.uri), cfg.autoFile)
+            if (!FolderBackupStore.decideReplace(prev, size)) {
+                val msg = "بکاپ خودکار انجام نشد: حجم بکاپ جدید بیش از ۲۰٪ کمتر است؛ فایل قبلی حفظ شد."
+                prefs.setBackupBlocked("local", msg)
+                AppLog.warning(AppLog.Category.BACKUP, msg)
+                return
+            }
+            if (FolderBackupStore.writeText(getApplication(), Uri.parse(st.uri), cfg.autoFile, json)) {
+                prefs.stampBackupSync("local", stampLabel())
+                prefs.setBackupBlocked("local", "")
+                AppLog.success(AppLog.Category.BACKUP, "بکاپ خودکار پوشه داخلی ذخیره شد.")
+            } else {
+                AppLog.error(AppLog.Category.BACKUP, "نوشتن بکاپ خودکار داخلی ناموفق بود")
+            }
+        } catch (e: Exception) {
+            AppLog.error(AppLog.Category.BACKUP, "خطا در بکاپ خودکار پوشه داخلی", e.message)
+        }
+    }
+
+    private suspend fun isOnline(): Boolean = withContext(Dispatchers.IO) {
+        try {
+            java.net.InetAddress.getByName("connectivitycheck.gstatic.com").isReachable(2000)
+        } catch (_: Exception) {
+            false
         }
     }
 

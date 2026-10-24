@@ -104,6 +104,12 @@ fun AppRoot(vm: MainViewModel, isDark: Boolean, themeMode: ThemeMode) {
         val planned = Notifications.planCheckNotifications(state.db.checks, state.db.transactions, state.db.persons, checkPrefs, notifUnit)
         CheckReminders.reschedule(context, planned)
     }
+    // autoBackup.ts: startup trigger — google-daily (guarded) + local overwrite; exit trigger is in MainActivity.onStop.
+    LaunchedEffect(state.loaded) {
+        if (!state.loaded) return@LaunchedEffect
+        delay(3000)
+        vm.runAutoBackups(MainViewModel.AutoTrigger.STARTUP)
+    }
     LaunchedEffect(selectedAccountFilter) { txUi.applyAccountFilter(selectedAccountFilter) }
     LaunchedEffect(selectedDeptFilter) { txUi.applyDeptFilter(selectedDeptFilter) }
     LaunchedEffect(selectedProjectFilter) { txUi.applyProjectFilter(selectedProjectFilter) }
